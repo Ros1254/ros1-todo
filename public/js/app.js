@@ -233,14 +233,6 @@ const STORAGE_KEYS = {
   slogan: 'ros1-todo-slogan',
   theme: 'ros1-todo-theme',
   sound: 'ros1-todo-sound',
-  
-  // MEETING NOTES AND API STORAGE KEYS
-  notes: 'ros1-todo-notes',
-  activeNoteId: 'ros1-todo-active-note-id',
-  apiProvider: 'ros1-todo-api-provider',
-  apiKey: 'ros1-todo-api-key',
-  apiBaseUrl: 'ros1-todo-api-base-url',
-
   // 🌟 NEW MULTILINGUAL AND LAYOUT PREFERENCE STORAGE KEYS
   lang: 'ros1-todo-lang',
   radiusStyle: 'ros1-todo-radius-style',
@@ -302,30 +294,10 @@ const app = createApp({
     // Sub-steps Input State Dictionary (keyed by todo.id)
     const newSubtaskTitles = ref({});
 
-    // MEETING NOTES & AI STATES
-    const activeTab = ref('todo'); // 'todo' or 'notes'
-    const meetingNotes = ref([]);
-    const activeNoteId = ref(null);
-    
-    // AI API Configurations
-    const apiProvider = ref('gemini'); // 'gemini', 'openai', or 'custom'
-    const apiKey = ref('');
-    const apiBaseUrl = ref('');
-    
-    // Voice Transcription States
-    const isRecording = ref(false);
-    const recordingInterimText = ref('');
-    const isAiSummarizing = ref(false);
-
-    // AUDIO FILE UPLOAD STT STATES
-    const isAudioTranscribing = ref(false);
-    const audioUploadFileInputRef = ref(null);
-
     // 🌟 NEW MULTILINGUAL AND LAYOUT STYLING PREFERENCE STATES
     const lang = ref('zh');
     const radiusStyle = ref('rounded'); // 'rounded', 'sharp', 'classic'
     const accentColor = ref('default'); // 'default', 'cyan', 'green', 'pink', 'purple', 'orange'
-    const isTestingConnection = ref(false);
 
     // Fetch local storage initial state
     const fetchStorage = () => {
@@ -336,15 +308,6 @@ const app = createApp({
         theme.value = localStorage.getItem(STORAGE_KEYS.theme) || 'light';
         soundToggle.value = localStorage.getItem(STORAGE_KEYS.sound) !== 'false';
         
-        // Load AI and Note fields
-        meetingNotes.value = JSON.parse(localStorage.getItem(STORAGE_KEYS.notes) || '[]');
-        const storedActiveNoteId = localStorage.getItem(STORAGE_KEYS.activeNoteId);
-        activeNoteId.value = storedActiveNoteId ? Number(storedActiveNoteId) : (meetingNotes.value[0]?.id || null);
-        
-        apiProvider.value = localStorage.getItem(STORAGE_KEYS.apiProvider) || 'gemini';
-        apiKey.value = localStorage.getItem(STORAGE_KEYS.apiKey) || '';
-        apiBaseUrl.value = localStorage.getItem(STORAGE_KEYS.apiBaseUrl) || '';
-
         // Load multilingual and styling preferences
         lang.value = localStorage.getItem(STORAGE_KEYS.lang) || 'zh';
         radiusStyle.value = localStorage.getItem(STORAGE_KEYS.radiusStyle) || 'rounded';
@@ -375,15 +338,7 @@ const app = createApp({
     };
     const saveSound = () => localStorage.setItem(STORAGE_KEYS.sound, soundToggle.value.toString());
     
-    // Save AI / Notes states
-    const saveNotes = () => localStorage.setItem(STORAGE_KEYS.notes, JSON.stringify(meetingNotes.value));
-    const saveActiveNoteId = () => {
-      if (activeNoteId.value) localStorage.setItem(STORAGE_KEYS.activeNoteId, activeNoteId.value.toString());
-      else localStorage.removeItem(STORAGE_KEYS.activeNoteId);
-    };
-    const saveApiProvider = () => localStorage.setItem(STORAGE_KEYS.apiProvider, apiProvider.value);
-    const saveApiKey = () => localStorage.setItem(STORAGE_KEYS.apiKey, apiKey.value);
-    const saveApiBaseUrl = () => localStorage.setItem(STORAGE_KEYS.apiBaseUrl, apiBaseUrl.value);
+
 
     // Save style and language preferences
     const saveLang = () => localStorage.setItem(STORAGE_KEYS.lang, lang.value);
@@ -397,12 +352,7 @@ const app = createApp({
     watch(theme, saveTheme);
     watch(soundToggle, saveSound);
     
-    // Notes watchers
-    watch(meetingNotes, saveNotes, { deep: true });
-    watch(activeNoteId, saveActiveNoteId);
-    watch(apiProvider, saveApiProvider);
-    watch(apiKey, saveApiKey);
-    watch(apiBaseUrl, saveApiBaseUrl);
+
 
     // Language and Style watchers
     watch(lang, saveLang);
@@ -457,10 +407,7 @@ const app = createApp({
       return filteredTodos.value.length === 0;
     });
 
-    // Notes computing
-    const activeNote = computed(() => {
-      return meetingNotes.value.find(n => n.id === activeNoteId.value) || null;
-    });
+
 
     // 7. 🌟 REAL-TIME TRANSLATION (i18n) ENGINE WRAPPER
     // Supports 100% reactive, offline-ready Chinese/English translation toggles.
@@ -695,90 +642,6 @@ const app = createApp({
       }
     };
 
-    // 9. 🌟 ASYNCHRONOUS AI CONNECTION TESTER
-    const testAiConnection = async () => {
-      if (!apiKey.value || apiKey.value.trim() === '') {
-        alert(t('apiKeyLabel') + ' 为空，请输入后再进行测试！', '未输入密钥');
-        return;
-      }
-
-      isTestingConnection.value = true;
-      SoundEffects.playClick();
-
-      try {
-        let textResult = '';
-
-        if (apiProvider.value === 'gemini') {
-          const endpoint = (apiBaseUrl.value && apiBaseUrl.value.trim() !== '') 
-            ? apiBaseUrl.value.trim() 
-            : 'https://generativelanguage.googleapis.com';
-            
-          const url = `${endpoint}/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey.value}`;
-
-          const response = await fetch(url, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              contents: [{
-                parts: [{ text: 'Please reply exactly with "OK" (no other text).' }]
-              }]
-            })
-          });
-
-          if (!response.ok) {
-            const errData = await response.json();
-            throw new Error(errData.error?.message || 'Gemini API Error ' + response.status);
-          }
-
-          const data = await response.json();
-          textResult = data.candidates?.[0]?.content?.parts?.[0]?.text || '';
-        } 
-        
-        else {
-          const endpoint = (apiBaseUrl.value && apiBaseUrl.value.trim() !== '') 
-            ? apiBaseUrl.value.trim() 
-            : 'https://api.openai.com/v1';
-            
-          const url = `${endpoint}/chat/completions`;
-          const modelName = apiProvider.value === 'openai' ? 'gpt-4o-mini' : 'deepseek-chat';
-
-          const response = await fetch(url, {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              'Authorization': `Bearer ${apiKey.value}`
-            },
-            body: JSON.stringify({
-              model: modelName,
-              messages: [{ role: 'user', content: 'Please reply exactly with "OK"' }],
-              max_tokens: 5,
-              temperature: 0.1
-            })
-          });
-
-          if (!response.ok) {
-            const errData = await response.json();
-            throw new Error(errData.error?.message || 'API Error ' + response.status);
-          }
-
-          const data = await response.json();
-          textResult = data.choices?.[0]?.message?.content || '';
-        }
-
-        if (textResult && textResult.trim().toUpperCase().includes('OK')) {
-          SoundEffects.playSuccess();
-          alert('测试成功！AI 秘书连接畅通，已成功握手联络。AI回复：' + textResult.trim(), '测试连接成功');
-        } else {
-          throw new Error('握手失败。AI 接口联络成功，但响应格式异常：' + textResult);
-        }
-
-      } catch (err) {
-        console.error('AI Connection Test failed:', err);
-        alert('测试连接失败！错误详情：' + err.message, '测试连接失败');
-      } finally {
-        isTestingConnection.value = false;
-      }
-    };
 
     // 🌟 Time Updater Method
     const updateTime = () => {
@@ -1023,380 +886,6 @@ const app = createApp({
       return { completed, total, percentage };
     };
 
-    // MEETING NOTES (CRUD) METHODS
-    const createNewNote = () => {
-      SoundEffects.playClick();
-      const newId = Date.now();
-      const dateString = new Date().toLocaleDateString('zh-CN', {
-        month: 'long',
-        day: 'numeric',
-        hour: '2-digit',
-        minute: '2-digit'
-      });
-      
-      meetingNotes.value.unshift({
-        id: newId,
-        title: '新会议纪要 ' + new Date().toLocaleDateString().slice(5),
-        date: dateString,
-        content: '',
-        summary: ''
-      });
-      activeNoteId.value = newId;
-    };
-
-    const selectNote = (note) => {
-      SoundEffects.playClick();
-      activeNoteId.value = note.id;
-    };
-
-    const deleteNote = (note) => {
-      confirm('确认删除这篇会议纪要吗？（永久删除不可恢复）').then((confirmed) => {
-        if (confirmed) {
-          const idx = meetingNotes.value.findIndex(n => n.id === note.id);
-          if (idx > -1) {
-            meetingNotes.value.splice(idx, 1);
-            SoundEffects.playClick();
-            if (activeNoteId.value === note.id) {
-              activeNoteId.value = meetingNotes.value[0]?.id || null;
-            }
-          }
-        }
-      });
-    };
-
-    // SPEECH TRANSCRIPTION ENGINE WRAPPER
-    let recognition = null;
-    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-    if (SpeechRecognition) {
-      recognition = new SpeechRecognition();
-      recognition.continuous = true;
-      recognition.interimResults = true;
-      recognition.lang = 'zh-CN';
-    }
-
-    const toggleVoiceRecording = (note) => {
-      if (!recognition) {
-        alert('您的浏览器不支持 Web Speech API 语音录制，推荐使用最新版 Chrome、Edge 或 Safari。', '不支持录音');
-        return;
-      }
-
-      if (isRecording.value) {
-        recognition.stop();
-        isRecording.value = false;
-        SoundEffects.playClick();
-      } else {
-        SoundEffects.playClick();
-        isRecording.value = true;
-        recordingInterimText.value = '';
-
-        recognition.onresult = (event) => {
-          let finalTranscript = '';
-          let interimTranscript = '';
-
-          for (let i = event.resultIndex; i < event.results.length; ++i) {
-            if (event.results[i].isFinal) {
-              finalTranscript += event.results[i][0].transcript;
-            } else {
-              interimTranscript += event.results[i][0].transcript;
-            }
-          }
-
-          recordingInterimText.value = interimTranscript;
-          if (finalTranscript) {
-            note.content = (note.content || '') + finalTranscript;
-          }
-        };
-
-        recognition.onerror = (err) => {
-          console.error('Speech Recognition Error:', err);
-          isRecording.value = false;
-        };
-
-        recognition.onend = () => {
-          isRecording.value = false;
-        };
-
-        recognition.start();
-      }
-    };
-
-    // AUDIO FILE TRANSCRIPTION ENGINE
-    const triggerAudioUpload = () => {
-      SoundEffects.playClick();
-      if (audioUploadFileInputRef.value) {
-        audioUploadFileInputRef.value.click();
-      }
-    };
-
-    const handleAudioUpload = async (event) => {
-      const file = event.target.files[0];
-      if (!file) return;
-
-      // Validate File Size (Maximum 20MB)
-      if (file.size > 20 * 1024 * 1024) {
-        alert('音频文件体积过大，请选择 20MB 以下的录音文件进行转文字！', '文件超出限制');
-        event.target.value = '';
-        return;
-      }
-
-      if (!apiKey.value || apiKey.value.trim() === '') {
-        alert('上传音频转写需要调用 AI 服务，请先点击右上角 [设置] 填入接口 API Key！', '未配置 API Key');
-        settingsActive.value = true;
-        event.target.value = '';
-        return;
-      }
-
-      if (!activeNote.value) {
-        alert('当前没有选中的会议纪要，请先点击左侧“新增会议纪要”或选择一篇记录后再上传音频！');
-        event.target.value = '';
-        return;
-      }
-
-      isAudioTranscribing.value = true;
-      SoundEffects.playClick();
-
-      try {
-        let textResult = '';
-
-        if (apiProvider.value === 'gemini') {
-          const base64Audio = await fileToBase64(file);
-          const mimeType = file.type || 'audio/mp3';
-
-          const endpoint = (apiBaseUrl.value && apiBaseUrl.value.trim() !== '') 
-            ? apiBaseUrl.value.trim() 
-            : 'https://generativelanguage.googleapis.com';
-            
-          const url = `${endpoint}/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey.value}`;
-
-          const response = await fetch(url, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              contents: [{
-                parts: [
-                  {
-                    inlineData: {
-                      mimeType: mimeType,
-                      data: base64Audio
-                    }
-                  },
-                  {
-                    text: '请仔细听这段会议录音文件，并将其完整、一字不漏地转写为中文文本（如果音频中包含英文，请直接保留英文）。请直接输出全部文字内容，不要进行总结或添加修饰，做最纯粹的语音转文字记录。'
-                  }
-                ]
-              }]
-            })
-          });
-
-          if (!response.ok) {
-            const errData = await response.json();
-            throw new Error(errData.error?.message || 'Gemini STT Error ' + response.status);
-          }
-
-          const data = await response.json();
-          textResult = data.candidates?.[0]?.content?.parts?.[0]?.text || '';
-        } 
-        
-        else {
-          const endpoint = (apiBaseUrl.value && apiBaseUrl.value.trim() !== '') 
-            ? apiBaseUrl.value.trim() 
-            : 'https://api.openai.com/v1';
-            
-          const url = `${endpoint}/audio/transcriptions`;
-
-          // Prepare Multipart payload
-          const formData = new FormData();
-          formData.append('file', file);
-          formData.append('model', 'whisper-1');
-          formData.append('language', 'zh');
-
-          const response = await fetch(url, {
-            method: 'POST',
-            headers: {
-              'Authorization': `Bearer ${apiKey.value}`
-            },
-            body: formData
-          });
-
-          if (!response.ok) {
-            const errData = await response.json();
-            throw new Error(errData.error?.message || 'Whisper Error ' + response.status);
-          }
-
-          const data = await response.json();
-          textResult = data.text || '';
-        }
-
-        if (textResult && textResult.trim() !== '') {
-          activeNote.value.content = (activeNote.value.content || '') + '\n' + textResult.trim();
-          SoundEffects.playSuccess();
-          alert('录音文件识别转文字成功，已自动追加到当前纪要编辑器中！', '识别成功');
-        } else {
-          throw new Error('AI 返回的识别结果为空，请确保录音文件中包含清晰的语音。');
-        }
-
-      } catch (err) {
-        console.error('Audio file transcription failed:', err);
-        alert('上传录音文件转文字失败，错误详情：' + err.message, '识别失败');
-      } finally {
-        isAudioTranscribing.value = false;
-        event.target.value = '';
-      }
-    };
-
-    // 🌟 LOCAL OFFLINE RULE-BASED SUMMARY SECRETARY (NO-API OPTION)
-    const generateLocalSummary = (note) => {
-      isAiSummarizing.value = true;
-      SoundEffects.playClick();
-      
-      setTimeout(() => {
-        const text = note.content;
-        const lines = text.split('\n');
-        
-        let agendaItems = [];
-        let decisions = [];
-        let actionItems = [];
-        
-        lines.forEach(line => {
-          const trimmed = line.trim();
-          if (!trimmed) return;
-          
-          // Smart local checks for action items
-          if (trimmed.includes('待办') || trimmed.includes('负责') || trimmed.includes('行动') || trimmed.startsWith('-') || trimmed.startsWith('*') || trimmed.includes('任务') || trimmed.includes('跟进')) {
-            let clean = trimmed.replace(/^[-\*\s\d\.\、]+/, '').trim();
-            if (clean) {
-              let owner = lang.value === 'zh' ? '全员' : 'All';
-              const ownerMatch = clean.match(/@(\S+)|由(\S+)负责|完成人[:：](\S+)/);
-              if (ownerMatch) {
-                owner = ownerMatch[1] || ownerMatch[2] || ownerMatch[3];
-              }
-              actionItems.push(`- [ ] ${clean} @${owner}`);
-            }
-          }
-          // Smart local checks for decisions
-          else if (trimmed.includes('决定') || trimmed.includes('决议') || trimmed.includes('通过') || trimmed.includes('达成一致') || trimmed.includes('确定')) {
-            decisions.push(trimmed.replace(/^[-\*\s\d\.\、]+/, '').trim());
-          }
-          // General agenda points
-          else {
-            if (trimmed.length > 5) {
-              agendaItems.push(trimmed);
-            }
-          }
-        });
-        
-        // Fallbacks
-        if (agendaItems.length === 0) {
-          agendaItems.push(lang.value === 'zh' ? '讨论了会议中的各项日常事务与任务同步。' : 'Discussed routine meeting affairs and task updates.');
-        }
-        if (decisions.length === 0) {
-          decisions.push(lang.value === 'zh' ? '会议以同步进展为主，暂无重大方向决议。' : 'The meeting focused on progress updates; no major decisions made.');
-        }
-        if (actionItems.length === 0) {
-          if (lang.value === 'zh') {
-            actionItems.push('- [ ] 整理并跟进会议中的讨论要点 @负责人');
-            actionItems.push('- [ ] 安排下一次工作汇报会 @项目管理');
-          } else {
-            actionItems.push('- [ ] Follow up on meeting discussion points @Assignee');
-            actionItems.push('- [ ] Arrange the next status sync meeting @PM');
-          }
-        }
-        
-        // Build Markdown
-        let summaryMd = lang.value === 'zh' 
-          ? `### 🤖 本地离线秘书提炼结果 (无API运行模式)\n\n`
-          : `### 🤖 Local Offline Secretary Summary (No-API Mode)\n\n`;
-          
-        summaryMd += lang.value === 'zh' ? `#### 1. 【会议核心要点】\n` : `#### 1. 【Core Agenda Points】\n`;
-        agendaItems.slice(0, 5).forEach((item, idx) => {
-          summaryMd += `* **${lang.value === 'zh' ? '议题' : 'Topic'} ${idx + 1}**: ${item}\n`;
-        });
-        summaryMd += `\n`;
-        
-        summaryMd += lang.value === 'zh' ? `#### 2. 【核心决策】\n` : `#### 2. 【Key Decisions】\n`;
-        decisions.slice(0, 4).forEach((item, idx) => {
-          summaryMd += `* **${lang.value === 'zh' ? '决议' : 'Decision'} ${idx + 1}**: ${item}\n`;
-        });
-        summaryMd += `\n`;
-        
-        summaryMd += lang.value === 'zh' ? `#### 3. 【待办行动指南】\n` : `#### 3. 【Action Guidelines】\n`;
-        actionItems.forEach(item => {
-          summaryMd += `${item}\n`;
-        });
-        
-        note.summary = summaryMd;
-        isAiSummarizing.value = false;
-        SoundEffects.playSuccess();
-        
-        alert(
-          lang.value === 'zh' 
-            ? '离线秘书已成功为您提炼会议纪要！您可以点击右上方按钮「一键导入待办行动项」直接同步至您的待办清单中。'
-            : 'Offline secretary successfully summarized the notes! Click "Extract Action Items" to sync them to your Tasks List.', 
-          lang.value === 'zh' ? '离线提炼完成' : 'Summary Completed'
-        );
-      }, 800);
-    };
-
-    // AI POWERED SUMMARIZATION ENGINE
-    const generateAiSummary = async (note) => {
-      if (!note.content || note.content.trim() === '') {
-        alert(lang.value === 'zh' ? '会议纪要内容为空，请输入或录入会议内容后再发起AI总结！' : 'Meeting notes content is empty!');
-        return;
-      }
-      
-      if (!apiKey.value || apiKey.value.trim() === '') {
-        const textConfirm = lang.value === 'zh'
-          ? '您当前未配置 AI API Key。系统检测到此情况，是否为您启用【本地离线秘书】对纪要进行结构化提炼与待办项提取？（完全免费、100%离线，即时生成！）'
-          : 'AI API Key is not configured. Would you like to enable the [Local Offline Secretary] to structure your notes and extract tasks? (100% offline, free, and instant!)';
-          
-        confirm(textConfirm, lang.value === 'zh' ? '启用本地离线秘书' : 'Enable Offline Secretary').then((useLocal) => {
-          if (useLocal) {
-            generateLocalSummary(note);
-          } else {
-            settingsActive.value = true;
-          }
-        });
-        return;
-      }
-
-      isAiSummarizing.value = true;
-      SoundEffects.playClick();
-
-      const systemPrompt = `你是一个专业的高效会议秘书。请将以下会议纪要内容整理提炼成一份结构化、高可读性的中文纪要总结。
-必须包含三个部分：
-1. 【会议核心要点】（以结构化列表呈现议题和结论）
-2. 【核心决策】（提炼本会做出的重要决断）
-3. 【待办行动指南】（必须以 "- [ ] 任务标题 @责任人" 的格式详细列出待办列表，以便后续系统提取行动项）。
-请使用清晰、高雅的 Markdown 格式输出。`;
-
-      try {
-        let textResult = '';
-
-        if (apiProvider.value === 'gemini') {
-          const endpoint = (apiBaseUrl.value && apiBaseUrl.value.trim() !== '') 
-            ? apiBaseUrl.value.trim() 
-            : 'https://generativelanguage.googleapis.com';
-            
-          const url = `${endpoint}/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey.value}`;
-          
-          const response = await fetch(url, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              contents: [{
-                parts: [{ text: systemPrompt + '\n\n会议纪要原始文本如下：\n' + note.content }]
-              }]
-            })
-          });
-
-          if (!response.ok) {
-            const errData = await response.json();
-            throw new Error(errData.error?.message || 'HTTP Error ' + response.status);
-          }
-
-          const data = await response.json();
-          textResult = data.candidates?.[0]?.content?.parts?.[0]?.text || '';
-        } 
         
         else {
           const endpoint = (apiBaseUrl.value && apiBaseUrl.value.trim() !== '') 
@@ -1543,7 +1032,6 @@ const app = createApp({
       const payload = {
         todos: todos.value,
         bin: recycleBin.value,
-        notes: meetingNotes.value,
         slogan: slogan.value,
         exportDate: new Date().toISOString()
       };
@@ -1588,7 +1076,6 @@ const app = createApp({
               if (confirmed) {
                 const importedTodos = Array.isArray(data.todos) ? data.todos : data;
                 const importedBin = Array.isArray(data.bin) ? data.bin : [];
-                const importedNotes = Array.isArray(data.notes) ? data.notes : [];
                 
                 importedTodos.forEach(item => {
                   if (item.title) {
@@ -1612,18 +1099,6 @@ const app = createApp({
                       removed: true,
                       tags: Array.isArray(item.tags) ? item.tags : [],
                       subtasks: Array.isArray(item.subtasks) ? item.subtasks : []
-                    });
-                  }
-                });
-
-                importedNotes.forEach(item => {
-                  if (item.title) {
-                    meetingNotes.value.push({
-                      id: item.id || Date.now() + Math.random(),
-                      title: item.title,
-                      date: item.date || new Date().toLocaleDateString(),
-                      content: item.content || '',
-                      summary: item.summary || ''
                     });
                   }
                 });
@@ -1759,8 +1234,6 @@ const app = createApp({
           localStorage.clear();
           todos.value = [];
           recycleBin.value = [];
-          meetingNotes.value = [];
-          activeNoteId.value = null;
           slogan.value = '今日事今日毕，勿将今事待明日! ☕';
           theme.value = 'light';
           soundToggle.value = true;
@@ -1823,39 +1296,11 @@ const app = createApp({
       removeSubtask,
       getSubtaskStats,
       
-      // MEETING NOTES & AI RETURNS
-      activeTab,
-      meetingNotes,
-      activeNoteId,
-      activeNote,
-      apiProvider,
-      apiKey,
-      apiBaseUrl,
-      isRecording,
-      recordingInterimText,
-      isAiSummarizing,
-      
-      // AUDIO FILE UPLOAD STT RETURNS
-      isAudioTranscribing,
-      audioUploadFileInputRef,
-      triggerAudioUpload,
-      handleAudioUpload,
-
       // 🌟 MULTILINGUAL & PREFERENCE STYLE RETURNS
       lang,
       radiusStyle,
       accentColor,
-      isTestingConnection,
       t, // translation helper
-      testAiConnection,
-      
-      // Note CRUD methods
-      createNewNote,
-      selectNote,
-      deleteNote,
-      toggleVoiceRecording,
-      generateAiSummary,
-      convertSummaryToTodos,
       
       // Methods
       startEditSlogan,
