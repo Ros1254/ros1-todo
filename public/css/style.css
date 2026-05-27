@@ -1271,4 +1271,150 @@ body {
   color: var(--text-primary);
 }
 
+/* ==========================================================================
+   ROS1 TODO - ADVANCED MODE POMODORO & AMBIENT SYNTHESIZER STYLING
+   ========================================================================== */
+
+/* 13. FLOW POMODORO WIDGET */
+.pomodoro-widget {
+  background: linear-gradient(135deg, rgba(var(--accent-rgb), 0.015) 0%, rgba(var(--accent-rgb), 0.05) 100%);
+  border: 1.5px solid var(--accent);
+  box-shadow: 0 8px 24px var(--shadow-color);
+  animation: fade-in-scale 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+@keyframes fade-in-scale {
+  from { opacity: 0; transform: scale(0.95); }
+  to { opacity: 1; transform: scale(1); }
+}
+
+.pomodoro-timer-display {
+  position: relative;
+  width: 140px;
+  height: 140px;
+  margin: 16px auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.progress-ring {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  transform: rotate(-90deg); /* Start circular progress at top */
+}
+
+.progress-ring-bg {
+  fill: transparent;
+  stroke: rgba(var(--accent-rgb), 0.08);
+  stroke-width: 6;
+}
+
+.progress-ring-fill {
+  fill: transparent;
+  stroke: var(--accent);
+  stroke-width: 6;
+  stroke-linecap: round;
+  transition: stroke-dashoffset 0.35s ease, stroke 0.35s ease;
+  filter: drop-shadow(0 0 4px var(--glow-color));
+}
+
+.timer-text-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  z-index: 2;
+  user-select: none;
+}
+
+.timer-mode-badge {
+  font-size: 9px;
+  font-weight: 800;
+  text-transform: uppercase;
+  padding: 3px 8px;
+  border-radius: 12px;
+  letter-spacing: 0.5px;
+  margin-bottom: 4px;
+  transition: all 0.3s ease;
+}
+
+.timer-mode-badge.focus-mode {
+  background: rgba(var(--accent-rgb), 0.1);
+  color: var(--accent);
+}
+
+.timer-mode-badge.break-mode {
+  background: rgba(16, 185, 129, 0.1);
+  color: #10b981;
+}
+
+.timer-time {
+  font-size: 26px;
+  font-weight: 800;
+  color: var(--text-primary);
+  font-family: 'Outfit', sans-serif;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.5px;
+}
+
+/* Ambient Sound switches */
+.ambient-btn {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: rgba(var(--accent-rgb), 0.03);
+  border: 1px solid var(--border-color);
+  color: var(--text-secondary);
+  padding: 8px 12px;
+  font-size: 12.5px;
+  font-weight: 700;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  width: 100%;
+  text-align: left;
+}
+
+.ambient-btn:hover {
+  background: rgba(var(--accent-rgb), 0.08);
+  color: var(--text-primary);
+  transform: translateX(3px);
+}
+
+.ambient-btn.active {
+  background: var(--accent);
+  color: var(--bg-secondary);
+  border-color: var(--accent);
+  box-shadow: 0 4px 12px var(--glow-color);
+}
+
+/* 🎯 Lock Focus target buttons inside Todo card */
+.action-btn.focus-lock {
+  color: var(--text-secondary);
+  opacity: 0.45;
+  transition: all var(--transition-bounce);
+}
+
+.action-btn.focus-lock:hover {
+  opacity: 1;
+  color: var(--accent);
+  transform: scale(1.15) rotate(90deg);
+}
+
+.action-btn.focus-lock.locked {
+  opacity: 1;
+  color: var(--accent);
+  animation: pulse-focus-lock 1.5s infinite alternate;
+}
+
+@keyframes pulse-focus-lock {
+  0% { transform: scale(1.1); filter: drop-shadow(0 0 1px var(--accent)); }
+  100% { transform: scale(0.9); filter: drop-shadow(0 0 6px var(--accent)); }
+}
+
+
 

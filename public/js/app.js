@@ -66,6 +66,194 @@ const SoundEffects = {
   }
 };
 
+// 1.2 🌟 ADVANCED PROCEDURAL AMBIENT SOUND GENERATOR (Web Audio API)
+const AmbientSoundEngine = {
+  ctx: null,
+  source: null,
+  filter: null,
+  gainNode: null,
+  lfo: null,
+  
+  init() {
+    if (!this.ctx) {
+      this.ctx = new (window.AudioContext || window.webkitAudioContext)();
+    }
+  },
+  
+  // Helper to create procedural Brown Noise (for Ocean & Cosmic hum)
+  createBrownNoiseBuffer() {
+    const bufferSize = 10 * this.ctx.sampleRate; // 10 seconds of noise
+    const noiseBuffer = this.ctx.createBuffer(1, bufferSize, this.ctx.sampleRate);
+    const output = noiseBuffer.getChannelData(0);
+    let lastOut = 0.0;
+    for (let i = 0; i < bufferSize; i++) {
+      const white = Math.random() * 2 - 1;
+      output[i] = (lastOut + (0.02 * white)) / 1.02;
+      lastOut = output[i];
+      output[i] *= 3.5; // Gain compensation
+    }
+    return noiseBuffer;
+  },
+
+  // Helper to create procedural Pink Noise (for Rain)
+  createPinkNoiseBuffer() {
+    const bufferSize = 10 * this.ctx.sampleRate;
+    const noiseBuffer = this.ctx.createBuffer(1, bufferSize, this.ctx.sampleRate);
+    const output = noiseBuffer.getChannelData(0);
+    let b0 = 0, b1 = 0, b2 = 0, b3 = 0, b4 = 0, b5 = 0, b6 = 0;
+    for (let i = 0; i < bufferSize; i++) {
+      const white = Math.random() * 2 - 1;
+      b0 = 0.99886 * b0 + white * 0.0555179;
+      b1 = 0.99332 * b1 + white * 0.0750759;
+      b2 = 0.96900 * b2 + white * 0.1538520;
+      b3 = 0.86650 * b3 + white * 0.3104856;
+      b4 = 0.55000 * b4 + white * 0.5329522;
+      b5 = -0.7616 * b5 - white * 0.0168980;
+      output[i] = b0 + b1 + b2 + b3 + b4 + b5 + b6 + white * 0.5362;
+      output[i] *= 0.11; // Gain compensation
+      b6 = white * 0.115926;
+    }
+    return noiseBuffer;
+  },
+
+  playRain() {
+    this.stop();
+    this.init();
+    
+    // Create Rain Pink Noise source
+    const buffer = this.createPinkNoiseBuffer();
+    this.source = this.ctx.createBufferSource();
+    this.source.buffer = buffer;
+    this.source.loop = true;
+
+    // Filter to make it sound like rain (low pass at ~1200Hz)
+    this.filter = this.ctx.createBiquadFilter();
+    this.filter.type = 'lowpass';
+    this.filter.frequency.value = 1200;
+
+    // Main Gain
+    this.gainNode = this.ctx.createGain();
+    this.gainNode.gain.setValueAtTime(0.35, this.ctx.currentTime);
+
+    // Route: Source -> Filter -> Gain -> Destination
+    this.source.connect(this.filter);
+    this.filter.connect(this.gainNode);
+    this.gainNode.connect(this.ctx.destination);
+    
+    this.source.start(0);
+  },
+
+  playOcean() {
+    this.stop();
+    this.init();
+    
+    // Create Deep Brown noise source
+    const buffer = this.createBrownNoiseBuffer();
+    this.source = this.ctx.createBufferSource();
+    this.source.buffer = buffer;
+    this.source.loop = true;
+
+    // Lowpass filter for deep rumbling water waves
+    this.filter = this.ctx.createBiquadFilter();
+    this.filter.type = 'lowpass';
+    this.filter.frequency.value = 350;
+
+    // Gain for waves volume
+    this.gainNode = this.ctx.createGain();
+    this.gainNode.gain.setValueAtTime(0.2, this.ctx.currentTime);
+
+    // 🌊 LFO to modulate gain slowly to simulate wave intervals (every 8 seconds)
+    this.lfo = this.ctx.createOscillator();
+    this.lfo.frequency.value = 0.125; // 1 / 8 seconds = 0.125Hz
+    const lfoGain = this.ctx.createGain();
+    lfoGain.gain.value = 0.15; // Modulate volume between 0.05 and 0.35
+    
+    this.lfo.connect(lfoGain);
+    lfoGain.connect(this.gainNode.gain);
+
+    // Connect audio path
+    this.source.connect(this.filter);
+    this.filter.connect(this.gainNode);
+    this.gainNode.connect(this.ctx.destination);
+    
+    this.source.start(0);
+    this.lfo.start(0);
+  },
+
+  playSpace() {
+    this.stop();
+    this.init();
+    
+    // 🌌 Deep cosmic space hum combining two slightly detuned oscillators + low rumble noise
+    const osc1 = this.ctx.createOscillator();
+    osc1.type = 'sine';
+    osc1.frequency.value = 73.42; // detuned D2
+    
+    const osc2 = this.ctx.createOscillator();
+    osc2.type = 'triangle';
+    osc2.frequency.value = 110.00; // detuned A2
+    
+    // Filter to make it extremely soft
+    this.filter = this.ctx.createBiquadFilter();
+    this.filter.type = 'lowpass';
+    this.filter.frequency.value = 150;
+
+    this.gainNode = this.ctx.createGain();
+    this.gainNode.gain.setValueAtTime(0.25, this.ctx.currentTime);
+
+    // Route oscillators through filter and gain
+    const oscGain1 = this.ctx.createGain();
+    oscGain1.gain.value = 0.6;
+    const oscGain2 = this.ctx.createGain();
+    oscGain2.gain.value = 0.3;
+
+    osc1.connect(oscGain1);
+    osc2.connect(oscGain2);
+
+    oscGain1.connect(this.filter);
+    oscGain2.connect(this.filter);
+    
+    // Add low brown noise rumble
+    const rumbleBuffer = this.createBrownNoiseBuffer();
+    const rumbleSource = this.ctx.createBufferSource();
+    rumbleSource.buffer = rumbleBuffer;
+    rumbleSource.loop = true;
+    
+    const rumbleGain = this.ctx.createGain();
+    rumbleGain.value = 0.4;
+    
+    rumbleSource.connect(this.filter);
+    
+    this.filter.connect(this.gainNode);
+    this.gainNode.connect(this.ctx.destination);
+
+    // Keep track of resources to stop later
+    this.source = {
+      stop() {
+        osc1.stop();
+        osc2.stop();
+        rumbleSource.stop();
+      }
+    };
+
+    osc1.start(0);
+    osc2.start(0);
+    rumbleSource.start(0);
+  },
+
+  stop() {
+    if (this.source) {
+      try { this.source.stop(); } catch (e) {}
+      this.source = null;
+    }
+    if (this.lfo) {
+      try { this.lfo.stop(); } catch (e) {}
+      this.lfo = null;
+    }
+  }
+};
+
+
 // 2. CANVAS-BASED CONFETTI & SPARK SYSTEM
 // Delivers a premium 'WOW' factor when tasks are finished.
 const ParticleSystem = {
@@ -236,7 +424,8 @@ const STORAGE_KEYS = {
   // 🌟 NEW MULTILINGUAL AND LAYOUT PREFERENCE STORAGE KEYS
   lang: 'ros1-todo-lang',
   radiusStyle: 'ros1-todo-radius-style',
-  accentColor: 'ros1-todo-accent-color'
+  accentColor: 'ros1-todo-accent-color',
+  appMode: 'ros1-todo-app-mode'
 };
 
 // HELPER UTILITY FOR Multimodal Audio base64 conversions
@@ -298,6 +487,18 @@ const app = createApp({
     const lang = ref('zh');
     const radiusStyle = ref('rounded'); // 'rounded', 'sharp', 'classic'
     const accentColor = ref('default'); // 'default', 'cyan', 'green', 'pink', 'purple', 'orange'
+    const appMode = ref('normal'); // 'normal' or 'advanced'
+
+    // 🧭 Flow Pomodoro & Ambient Sound States
+    const focusedTodoId = ref(null);
+    const timerTimeLeft = ref(25 * 60);
+    const timerTotalDuration = ref(25 * 60);
+    const isTimerRunning = ref(false);
+    const timerMode = ref('focus'); // 'focus', 'shortBreak', 'longBreak'
+    const ambientMode = ref(null);
+
+    let timerInterval = null;
+    let timerTargetEndTime = null;
 
     // Fetch local storage initial state
     const fetchStorage = () => {
@@ -312,6 +513,7 @@ const app = createApp({
         lang.value = localStorage.getItem(STORAGE_KEYS.lang) || 'zh';
         radiusStyle.value = localStorage.getItem(STORAGE_KEYS.radiusStyle) || 'rounded';
         accentColor.value = localStorage.getItem(STORAGE_KEYS.accentColor) || 'default';
+        appMode.value = localStorage.getItem(STORAGE_KEYS.appMode) || 'normal';
 
         // Sync HTML data attribute with theme
         document.documentElement.setAttribute('data-theme', theme.value);
@@ -344,6 +546,7 @@ const app = createApp({
     const saveLang = () => localStorage.setItem(STORAGE_KEYS.lang, lang.value);
     const saveRadiusStyle = () => localStorage.setItem(STORAGE_KEYS.radiusStyle, radiusStyle.value);
     const saveAccentColor = () => localStorage.setItem(STORAGE_KEYS.accentColor, accentColor.value);
+    const saveAppMode = () => localStorage.setItem(STORAGE_KEYS.appMode, appMode.value);
 
     // Watchers for continuous storage synchronization
     watch(todos, saveTodos, { deep: true });
@@ -363,6 +566,26 @@ const app = createApp({
     watch(accentColor, () => {
       saveAccentColor();
       applyAccentColor();
+    });
+    watch(appMode, (newMode) => {
+      saveAppMode();
+      if (newMode === 'normal') {
+        // Stop timer
+        if (isTimerRunning.value) {
+          isTimerRunning.value = false;
+          if (timerInterval) {
+            clearInterval(timerInterval);
+            timerInterval = null;
+          }
+        }
+        // Stop ambient sound
+        if (ambientMode.value) {
+          ambientMode.value = null;
+          AmbientSoundEngine.stop();
+        }
+        // Clear focused target
+        focusedTodoId.value = null;
+      }
     });
 
     // 6. COMPUTED STATS & FILTERS
@@ -488,7 +711,24 @@ const app = createApp({
         accentGreen: "极光绿",
         accentPink: "樱花粉",
         accentPurple: "罗兰紫",
-        accentOrange: "落日橙"
+        accentOrange: "落日橙",
+        appModeLabel: "应用模式 (App Mode)",
+        appModeNormal: "普通极简",
+        appModeAdvanced: "效能高级",
+        pomodoroTitle: "心流专注番茄钟",
+        pomodoroStart: "开始专注",
+        pomodoroPause: "暂停",
+        pomodoroResume: "继续",
+        pomodoroReset: "重置",
+        pomodoroModeFocus: "专注时间",
+        pomodoroModeShortBreak: "短暂休息",
+        pomodoroModeLongBreak: "系统休整",
+        pomodoroTarget: "当前专注",
+        pomodoroNoTarget: "暂无专注目标 (点击待办右侧 🎯 锁定)",
+        ambientTitle: "环境心流音",
+        ambientRain: "林间细雨 🌧️",
+        ambientOcean: "深海巨浪 🌊",
+        ambientSpace: "空灵宇宙 🌌"
       },
       en: {
         tasks: "Tasks List",
@@ -566,7 +806,24 @@ const app = createApp({
         accentGreen: "Aurora Green",
         accentPink: "Sakura Pink",
         accentPurple: "Royal Purple",
-        accentOrange: "Sunset Orange"
+        accentOrange: "Sunset Orange",
+        appModeLabel: "App Mode",
+        appModeNormal: "Normal Minimalist",
+        appModeAdvanced: "Flow Advanced",
+        pomodoroTitle: "Flow Pomodoro Timer",
+        pomodoroStart: "Start Focus",
+        pomodoroPause: "Pause",
+        pomodoroResume: "Resume",
+        pomodoroReset: "Reset",
+        pomodoroModeFocus: "Focusing",
+        pomodoroModeShortBreak: "Short Break",
+        pomodoroModeLongBreak: "Long Break",
+        pomodoroTarget: "Focusing on",
+        pomodoroNoTarget: "No active target (Click 🎯 on task)",
+        ambientTitle: "Ambient Flow Sound",
+        ambientRain: "Forest Rain 🌧️",
+        ambientOcean: "Ocean Waves 🌊",
+        ambientSpace: "Cosmic Buzz 🌌"
       }
     };
 
@@ -769,6 +1026,10 @@ const app = createApp({
         } else {
           ParticleSystem.spawn(window.innerWidth / 2, window.innerHeight / 2);
         }
+        // Auto-clear focus target on completion
+        if (focusedTodoId.value === todo.id) {
+          focusedTodoId.value = null;
+        }
       } else {
         SoundEffects.playClick();
       }
@@ -813,6 +1074,10 @@ const app = createApp({
         const removedItem = todos.value.splice(index, 1)[0];
         removedItem.removed = true;
         recycleBin.value.unshift(removedItem);
+        // Auto-clear focus target on removal
+        if (focusedTodoId.value === todo.id) {
+          focusedTodoId.value = null;
+        }
       }
     };
 
@@ -911,6 +1176,10 @@ const app = createApp({
           completed.forEach(t => {
             t.removed = true;
             recycleBin.value.unshift(t);
+            // Clear if focused
+            if (focusedTodoId.value === t.id) {
+              focusedTodoId.value = null;
+            }
           });
           todos.value = todos.value.filter(t => !t.completed);
           SoundEffects.playClick();
@@ -927,6 +1196,7 @@ const app = createApp({
             recycleBin.value.unshift(t);
           });
           todos.value = [];
+          focusedTodoId.value = null; // Clear focus target since all tasks are gone
           SoundEffects.playClick();
         }
       });
@@ -1156,11 +1426,162 @@ const app = createApp({
           lang.value = 'zh';
           radiusStyle.value = 'rounded';
           accentColor.value = 'default';
+          
+          focusedTodoId.value = null;
+          timerTimeLeft.value = 25 * 60;
+          timerTotalDuration.value = 25 * 60;
+          if (isTimerRunning.value) {
+            isTimerRunning.value = false;
+            if (timerInterval) {
+              clearInterval(timerInterval);
+              timerInterval = null;
+            }
+          }
+          timerMode.value = 'focus';
+          if (ambientMode.value) {
+            ambientMode.value = null;
+            AmbientSoundEngine.stop();
+          }
+
           settingsActive.value = false;
           SoundEffects.playSuccess();
           alert('重置成功 / Reset successful!');
         }
       });
+    };
+
+    // ==========================================
+    // 🧭 FLOW POMODORO & AMBIENT SOUND CONTROLLER
+    // ==========================================
+    
+    const focusedTodo = computed(() => {
+      return todos.value.find(t => t.id === focusedTodoId.value) || null;
+    });
+
+    const timerStrokeStyle = computed(() => {
+      const circumference = 282.743;
+      const offset = circumference * (1 - timerTimeLeft.value / timerTotalDuration.value);
+      return {
+        strokeDasharray: `${circumference}`,
+        strokeDashoffset: `${offset}`
+      };
+    });
+
+    const timerModeText = computed(() => {
+      if (timerMode.value === 'focus') {
+        return t('pomodoroModeFocus');
+      } else if (timerMode.value === 'shortBreak') {
+        return t('pomodoroModeShortBreak');
+      } else if (timerMode.value === 'longBreak') {
+        return t('pomodoroModeLongBreak');
+      }
+      return '';
+    });
+
+    const timerModeClass = computed(() => {
+      return timerMode.value === 'focus' ? 'focus-mode' : 'break-mode';
+    });
+
+    const formattedTime = computed(() => {
+      const minutes = Math.floor(timerTimeLeft.value / 60);
+      const seconds = timerTimeLeft.value % 60;
+      return `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+    });
+
+    const lockTodoFocus = (todo) => {
+      SoundEffects.playClick();
+      if (focusedTodoId.value === todo.id) {
+        focusedTodoId.value = null;
+      } else {
+        focusedTodoId.value = todo.id;
+      }
+    };
+
+    const handleTimerComplete = () => {
+      SoundEffects.playSuccess();
+      
+      if (typeof ParticleSystem !== 'undefined' && ParticleSystem.spawn) {
+        ParticleSystem.spawn(window.innerWidth / 2, window.innerHeight / 3, 50);
+      }
+
+      if (timerMode.value === 'focus') {
+        timerMode.value = 'shortBreak';
+        timerTotalDuration.value = 5 * 60;
+        timerTimeLeft.value = 5 * 60;
+      } else if (timerMode.value === 'shortBreak') {
+        timerMode.value = 'focus';
+        timerTotalDuration.value = 25 * 60;
+        timerTimeLeft.value = 25 * 60;
+      } else if (timerMode.value === 'longBreak') {
+        timerMode.value = 'focus';
+        timerTotalDuration.value = 25 * 60;
+        timerTimeLeft.value = 25 * 60;
+      }
+    };
+
+    const toggleTimer = () => {
+      SoundEffects.playClick();
+      if (isTimerRunning.value) {
+        isTimerRunning.value = false;
+        if (timerInterval) {
+          clearInterval(timerInterval);
+          timerInterval = null;
+        }
+      } else {
+        isTimerRunning.value = true;
+        // High-precision clock scheduling to defeat requestAnimationFrame / setInterval thread drift
+        timerTargetEndTime = Date.now() + timerTimeLeft.value * 1000;
+        
+        timerInterval = setInterval(() => {
+          const delta = timerTargetEndTime - Date.now();
+          if (delta <= 0) {
+            timerTimeLeft.value = 0;
+            isTimerRunning.value = false;
+            clearInterval(timerInterval);
+            timerInterval = null;
+            handleTimerComplete();
+          } else {
+            timerTimeLeft.value = Math.ceil(delta / 1000);
+          }
+        }, 100);
+      }
+    };
+
+    const resetTimer = () => {
+      SoundEffects.playClick();
+      isTimerRunning.value = false;
+      if (timerInterval) {
+        clearInterval(timerInterval);
+        timerInterval = null;
+      }
+      
+      if (timerMode.value === 'focus') {
+        timerTotalDuration.value = 25 * 60;
+        timerTimeLeft.value = 25 * 60;
+      } else if (timerMode.value === 'shortBreak') {
+        timerTotalDuration.value = 5 * 60;
+        timerTimeLeft.value = 5 * 60;
+      } else if (timerMode.value === 'longBreak') {
+        timerTotalDuration.value = 15 * 60;
+        timerTimeLeft.value = 15 * 60;
+      }
+    };
+
+    const toggleAmbient = (mode) => {
+      SoundEffects.playClick();
+      if (ambientMode.value === mode) {
+        ambientMode.value = null;
+        AmbientSoundEngine.stop();
+      } else {
+        ambientMode.value = mode;
+        if (mode === 'rain') {
+          AmbientSoundEngine.playRain();
+        } else if (mode === 'ocean') {
+          AmbientSoundEngine.playOcean();
+        } else if (mode === 'space') {
+          AmbientSoundEngine.playSpace();
+        }
+      }
     };
 
     // Lifecycle mount initialization
@@ -1217,6 +1638,23 @@ const app = createApp({
       radiusStyle,
       accentColor,
       t, // translation helper
+      
+      // 🧭 Flow Pomodoro & Ambient Sound System Returns
+      appMode,
+      focusedTodoId,
+      focusedTodo,
+      lockTodoFocus,
+      timerTimeLeft,
+      timerTotalDuration,
+      isTimerRunning,
+      timerModeText,
+      timerModeClass,
+      timerStrokeStyle,
+      formattedTime,
+      toggleTimer,
+      resetTimer,
+      ambientMode,
+      toggleAmbient,
       
       // Methods
       startEditSlogan,

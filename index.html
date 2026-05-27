@@ -297,6 +297,15 @@
                                     </svg>
                                 </button>
                                 
+                                <!-- Lock Focus (Advanced Mode only) -->
+                                <button v-if="!todo.removed && appMode === 'advanced'" class="action-btn focus-lock" :class="{ locked: focusedTodoId === todo.id }" @click="lockTodoFocus(todo)" :title="lang === 'zh' ? '锁定为专注目标' : 'Lock as focus target'">
+                                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                                        <circle cx="12" cy="12" r="10"></circle>
+                                        <circle cx="12" cy="12" r="6"></circle>
+                                        <circle cx="12" cy="12" r="2"></circle>
+                                    </svg>
+                                </button>
+
                                 <!-- Edit Inline (Active list only) -->
                                 <button v-if="!todo.removed && (editedTodo === null || editedTodo.id !== todo.id)" class="action-btn" @click="startEditTodo(todo)" :title="lang === 'zh' ? '编辑待办' : 'Edit task'">
                                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
@@ -452,6 +461,71 @@
                             />
                         </div>
                     </div>
+
+                    <!-- 🧭 Flow Pomodoro & Ambient Widget (Advanced Mode Only) -->
+                    <div class="sidebar-widget pomodoro-widget" v-if="appMode === 'advanced'">
+                        <div class="widget-title">{{ t('pomodoroTitle') }}</div>
+                        
+                        <!-- 🎯 Circular Progress Ring & Timer -->
+                        <div class="pomodoro-timer-display">
+                            <svg class="progress-ring" viewBox="0 0 100 100">
+                                <circle class="progress-ring-bg" cx="50" cy="50" r="45"></circle>
+                                <circle class="progress-ring-fill" cx="50" cy="50" r="45" :style="timerStrokeStyle"></circle>
+                            </svg>
+                            <div class="timer-text-container">
+                                <div class="timer-mode-badge" :class="timerModeClass">{{ timerModeText }}</div>
+                                <div class="timer-time">{{ formattedTime }}</div>
+                            </div>
+                        </div>
+
+                        <!-- 🎛️ Control Buttons -->
+                        <div class="timer-controls" style="display: flex; gap: 8px; justify-content: center; margin-top: 10px;">
+                            <button 
+                                class="btn-small btn-timer-primary" 
+                                style="flex: 1; padding: 10px; font-weight: 700; background: var(--accent); color: var(--bg-secondary);" 
+                                @click="toggleTimer"
+                            >
+                                <span>{{ isTimerRunning ? '⏸️ ' + t('pomodoroPause') : (timerTimeLeft === timerTotalDuration ? '▶️ ' + t('pomodoroStart') : '▶️ ' + t('pomodoroResume')) }}</span>
+                            </button>
+                            <button 
+                                class="btn-small danger-text" 
+                                style="padding: 10px 14px; font-weight: 700; border-color: rgba(220,53,69,0.3);" 
+                                @click="resetTimer"
+                                :disabled="timerTimeLeft === timerTotalDuration && !isTimerRunning"
+                            >
+                                <span>🔄</span>
+                            </button>
+                        </div>
+
+                        <!-- 🎯 Locked Focus Target Task -->
+                        <div class="timer-target-box" style="margin-top: 12px; padding: 10px; border-radius: var(--radius-sm); background: rgba(var(--accent-rgb), 0.04); border: 1.5px solid var(--border-color); display: flex; flex-direction: column; gap: 4px;">
+                            <span style="font-size: 11px; font-weight: 800; color: var(--text-secondary); display: flex; align-items: center; gap: 4px;">
+                                <span>🎯</span> <span>{{ t('pomodoroTarget') }}</span>
+                            </span>
+                            <div v-if="focusedTodo" class="timer-target-title" style="font-size: 13px; font-weight: 700; color: var(--text-primary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+                                {{ focusedTodo.title }}
+                            </div>
+                            <div v-else class="timer-target-title empty" style="font-size: 12px; font-style: italic; color: var(--text-secondary);">
+                                {{ t('pomodoroNoTarget') }}
+                            </div>
+                        </div>
+
+                        <!-- 🔊 Ambient Sound Toggles -->
+                        <div class="ambient-sound-section" style="margin-top: 12px; padding-top: 12px; border-top: 1.5px dashed var(--border-color);">
+                            <div class="ambient-title" style="font-size: 12px; font-weight: 800; color: var(--text-secondary); margin-bottom: 8px; text-transform: uppercase; letter-spacing: 0.5px;">{{ t('ambientTitle') }}</div>
+                            <div class="ambient-switches" style="display: flex; flex-direction: column; gap: 6px;">
+                                <button class="ambient-btn" :class="{ active: ambientMode === 'rain' }" @click="toggleAmbient('rain')">
+                                    <span>🌧️</span> <span>{{ t('ambientRain') }}</span>
+                                </button>
+                                <button class="ambient-btn" :class="{ active: ambientMode === 'ocean' }" @click="toggleAmbient('ocean')">
+                                    <span>🌊</span> <span>{{ t('ambientOcean') }}</span>
+                                </button>
+                                <button class="ambient-btn" :class="{ active: ambientMode === 'space' }" @click="toggleAmbient('space')">
+                                    <span>🌌</span> <span>{{ t('ambientSpace') }}</span>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
                 </aside>
             </div>
 
@@ -531,6 +605,15 @@
                     <div class="settings-section">
                         <div class="settings-section-title">{{ t('sysPreferences') }}</div>
                         
+                        <!-- App Mode Switcher -->
+                        <div class="settings-input-group" style="margin-top: 10px;">
+                            <label class="settings-input-label">{{ t('appModeLabel') }}</label>
+                            <select class="settings-input-control" v-model="appMode">
+                                <option value="normal">{{ t('appModeNormal') }}</option>
+                                <option value="advanced">{{ t('appModeAdvanced') }}</option>
+                            </select>
+                        </div>
+
                         <!-- Sound Toggle -->
                         <div class="opt-row">
                             <div class="opt-label-block">
