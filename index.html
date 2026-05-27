@@ -1,0 +1,804 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ros1 Todo | 极简、炫酷、本地优先的待办事项管理清单</title>
+    
+    <!-- SEO Optimization Meta Tags -->
+    <meta name="keywords" content="Ros1 Todo, 网页代办, 极简待办, 离线待办事项, todo list, 在线备忘录, 无需注册, 隐私保护, Cyberpunk, 待办清单, 效率工具" />
+    <meta name="description" content="一款卓越的、支持极简和赛博朋克主题的离线优先待办清单（Todo List）工具。无需登录，数据全部存储在本地浏览器缓存中。提供顺滑的拖拽排序、精美动画、快捷分类标签和数据备份导入导出功能。" />
+    
+    <!-- Styling System -->
+    <link href="public/css/normalize.css" rel="stylesheet" />
+    <link href="public/css/style.css" rel="stylesheet" />
+    
+    <!-- Google Fonts Outfit for premium look -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    
+    <!-- Vue 3 Production Package (Offline-capable) -->
+    <script src="public/js/vue.global.js"></script>
+    
+    <style>
+        /* Avoid Vue mustache flash before mount */
+        [v-cloak] {
+            display: none !important;
+        }
+    </style>
+</head>
+<body>
+    <!-- Canvas Overlay for Stunning Particle Effects -->
+    <canvas id="particle-canvas"></canvas>
+
+    <!-- Dot Grid Background Pattern -->
+    <div class="bg-pattern"></div>
+
+    <!-- Vue Root App Wrapper -->
+    <div id="todo-app" v-cloak>
+        <!-- Main Container -->
+        <div class="todo-wrapper">
+            <div class="todo-app">
+            
+            <!-- 1. HEADER SECTION -->
+            <header class="header-box">
+                <div class="title-container">
+                    <!-- Ros1 Todo Rose SVG Icon -->
+                    <svg class="logo-vector" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M4 12a8 8 0 0 1 8-8c.41 0 .82.03 1.22.09A9 9 0 0 1 20 12c0 3.18-1.86 6.13-4.78 7.5a2 2 0 0 1-2.42-.4l-.8-.8a1 1 0 0 0-1.42 0l-.8.8a2 2 0 0 1-2.42.4C4.86 18.13 3 15.18 3 12z"></path>
+                        <path d="M12 8c-2 0-3 1.5-3 3.5 0 2.5 3 4.5 3 5.5 0-1 3-3 3-5.5C15 9.5 14 8 12 8z"></path>
+                        <path d="M12 10c-.55 0-1 .45-1 1s.45 1 1 1 1-.45 1-1-.45-1-1-1z"></path>
+                        <path d="M12 17v4"></path>
+                        <path d="M8 14c.5-1.5 2-2.5 4-2.5"></path>
+                    </svg>
+                    <h1 class="app-title">
+                        Ros1 Todo
+                    </h1>
+                </div>
+                
+                <div style="display: flex; align-items: center; gap: 20px;">
+                    <!-- Real-time Digital Clock Widget -->
+                    <div class="header-clock" style="text-align: right; line-height: 1.25; display: flex; flex-direction: column; justify-content: center; user-select: none;">
+                        <span style="font-size: 12px; font-weight: 700; color: var(--accent); opacity: 0.9;">{{ timeGreeting }}</span>
+                        <span style="font-size: 19px; font-weight: 800; color: var(--text-primary); font-variant-numeric: tabular-nums; letter-spacing: -0.5px;">{{ currentTime }}</span>
+                        <span style="font-size: 10px; color: var(--text-secondary); margin-top: 2px;">{{ currentDate }}</span>
+                    </div>
+
+                    <!-- Swinging robot-arm pendulum SVG -->
+                    <svg class="pendulum-svg" viewBox="0 0 50 70">
+                        <!-- Shadow -->
+                        <g class="pendulum-shadow">
+                            <line x1="25" y1="5" x2="25" y2="45" stroke="rgba(0,0,0,0.15)" stroke-width="2"/>
+                            <circle cx="25" cy="48" r="7" fill="rgba(0,0,0,0.2)"/>
+                        </g>
+                        <!-- Actual Pendulum -->
+                        <g class="pendulum-arm">
+                            <line x1="25" y1="5" x2="25" y2="45" stroke="var(--accent)" stroke-width="2.5" stroke-linecap="round"/>
+                            <circle cx="25" cy="48" r="8" class="pendulum-weight"/>
+                        </g>
+                        <!-- Anchor Dot -->
+                        <circle cx="25" cy="5" r="3.5" fill="var(--text-primary)"/>
+                    </svg>
+                    
+                    <!-- Settings Button -->
+                    <button class="btn-icon" @click="toggleSettings" :title="t('settingsTitle')">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                            <circle cx="12" cy="12" r="3"></circle>
+                            <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
+                        </svg>
+                    </button>
+                </div>
+            </header>
+
+            <!-- 🌟 WORKSPACE TABS SELECTOR -->
+            <div class="workspace-tabs">
+                <button class="tab-btn" :class="{ active: activeTab === 'todo' }" @click="activeTab = 'todo'">
+                    <span>📅</span> {{ t('tasks') }}
+                </button>
+                <button class="tab-btn" :class="{ active: activeTab === 'notes' }" @click="activeTab = 'notes'">
+                    <span>📝</span> {{ t('notes') }}
+                </button>
+            </div>
+
+            <!-- 2. MAIN GRID LAYOUT -->
+            <div class="todo-grid" v-show="activeTab === 'todo'">
+                
+                <!-- LEFT PANEL: TODOS MANAGEMENT -->
+                <main class="todo-list-box">
+                    
+                    <!-- Task Input Card -->
+                    <div class="add-todo-container">
+                        <div class="add-content-wrapper">
+                            <input 
+                                type="text" 
+                                class="add-content" 
+                                :class="{ empty: checkEmpty }" 
+                                :placeholder="t('addTodoPlaceholder')" 
+                                v-model="newTodoTitle"
+                                @keyup.enter="addTodo"
+                            />
+                            <button class="submit-btn" type="button" @click="addTodo">
+                                {{ t('submit') }}
+                            </button>
+                            <transition name="tips">
+                                <div class="empty-tips" v-if="checkEmpty">{{ t('emptyTips') }}</div>
+                            </transition>
+                        </div>
+                        
+                        <!-- Quick Tag Builder underneath input -->
+                        <div class="todo-tags" style="padding-left: 4px;">
+                            <span style="font-size: 13px; color: var(--text-secondary); margin-right: 4px; display: flex; align-items: center;">{{ t('addTag') }}</span>
+                            <button 
+                                v-for="tag in availableTags" 
+                                :key="tag" 
+                                class="tag-pill" 
+                                :style="{ opacity: newTodoTags.includes(tag) ? 1 : 0.45, transform: newTodoTags.includes(tag) ? 'scale(1.05)' : 'scale(1)' }"
+                                @click="toggleAddTag(tag)"
+                            >
+                                {{ tag }}
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Double-clickable Slogan Bar -->
+                    <div class="slogan-bar" :title="t('sloganTitle')" @dblclick="startEditSlogan">
+                        <div v-if="!isEditingSlogan" class="slogan-text">
+                            💬 {{ slogan }}
+                        </div>
+                        <div v-else style="width: 100%; display: flex; gap: 8px;">
+                            <input 
+                                v-model="slogan" 
+                                ref="sloganInputRef" 
+                                class="slogan-input" 
+                                @keyup.enter="finishEditSlogan" 
+                                @keyup.esc="cancelEditSlogan"
+                                @blur="finishEditSlogan"
+                            />
+                        </div>
+                    </div>
+
+                    <!-- List of Tasks -->
+                    <ul class="todo-list" v-if="filteredTodos.length > 0">
+                        <li 
+                            v-for="(todo, index) in filteredTodos" 
+                            :key="todo.id" 
+                            class="todo-item"
+                            :class="{ dragging: dragIndex === index }"
+                            :draggable="editedTodo === null || editedTodo.id !== todo.id"
+                            :data-id="todo.id"
+                            @dragstart="handleDragStart(index, $event)"
+                            @dragend="handleDragEnd($event)"
+                            @dragover="handleDragOver(index, $event)"
+                            @dragenter="handleDragEnter(index, $event)"
+                            @touchstart="handleTouchStart(index, $event)"
+                            @touchmove="handleTouchMove($event)"
+                            @touchend="handleTouchEnd"
+                        >
+                            <!-- Circle Checkbox -->
+                            <div 
+                                class="todo-check" 
+                                :class="{ completed: todo.completed }" 
+                                @click="toggleTodoComplete(todo, $event)"
+                                v-if="!todo.removed"
+                            >
+                                <svg class="todo-check-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round" stroke-linejoin="round">
+                                    <polyline points="20 6 9 17 4 12"></polyline>
+                                </svg>
+                            </div>
+
+                            <!-- Task Text Content -->
+                            <div class="todo-content-block" @dblclick="startEditTodo(todo)">
+                                <div v-if="editedTodo === null || editedTodo.id !== todo.id">
+                                    <span class="todo-title" :class="{ completed: todo.completed }">
+                                        {{ todo.title }}
+                                    </span>
+                                </div>
+                                <div v-else>
+                                    <input 
+                                        type="text" 
+                                        class="edit-todo-input" 
+                                        v-model="todo.title" 
+                                        :id="'edit-input-' + todo.id"
+                                        @keyup.enter="finishEditTodo(todo)" 
+                                        @keyup.esc="cancelEditTodo(todo)" 
+                                        @blur="finishEditTodo(todo)"
+                                    />
+                                </div>
+
+                                <!-- Pill Tags inside item -->
+                                <div class="todo-tags" v-if="todo.tags && todo.tags.length > 0">
+                                    <span v-for="tag in todo.tags" :key="tag" class="tag-pill">
+                                        {{ tag }}
+                                    </span>
+                                </div>
+
+                                <!-- Subtasks Checklist Section -->
+                                <div class="subtask-section" v-if="!todo.removed" style="margin-top: 12px; padding-top: 12px; border-top: 1px dashed var(--border-color); display: flex; flex-direction: column; gap: 8px;">
+                                    <!-- Progress Bar for Subtasks -->
+                                    <div class="subtask-progress-wrapper" v-if="todo.subtasks && todo.subtasks.length > 0" style="display: flex; align-items: center; gap: 8px; font-size: 11px; color: var(--text-secondary);">
+                                        <div style="flex-shrink: 0; font-weight: 700;">{{ lang === 'zh' ? '子步骤' : 'Subtasks' }}: {{ getSubtaskStats(todo).completed }}/{{ getSubtaskStats(todo).total }}</div>
+                                        <div style="flex: 1; height: 4px; background: var(--border-color); border-radius: 2px; overflow: hidden;">
+                                            <div style="height: 100%; background: var(--accent); transition: width 0.3s ease;" :style="{ width: getSubtaskStats(todo).percentage + '%' }"></div>
+                                        </div>
+                                        <div style="flex-shrink: 0; font-weight: 700;">{{ getSubtaskStats(todo).percentage }}%</div>
+                                    </div>
+
+                                    <!-- Subtask list -->
+                                    <div class="subtask-list" v-if="todo.subtasks && todo.subtasks.length > 0" style="display: flex; flex-direction: column; gap: 6px; padding-left: 2px;">
+                                        <div 
+                                            v-for="sub in todo.subtasks" 
+                                            :key="sub.id" 
+                                            class="subtask-item" 
+                                            style="display: flex; align-items: center; justify-content: space-between; gap: 8px;"
+                                        >
+                                            <div style="display: flex; align-items: center; gap: 8px; flex: 1;">
+                                                <!-- Small Subtask checkbox -->
+                                                <div 
+                                                    class="subtask-check" 
+                                                    style="width: 16px; height: 16px; border-radius: 4px; border: 1.5px solid var(--border-color); cursor: pointer; display: flex; align-items: center; justify-content: center; transition: all 0.2s; flex-shrink: 0;"
+                                                    :style="{ borderColor: sub.completed ? 'var(--color-success)' : 'var(--border-color)', background: sub.completed ? 'var(--color-success)' : 'transparent' }"
+                                                    @click.stop="toggleSubtask(todo, sub, $event)"
+                                                >
+                                                    <svg v-if="sub.completed" width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="#ffffff" stroke-width="5" stroke-linecap="round" stroke-linejoin="round">
+                                                        <polyline points="20 6 9 17 4 12"></polyline>
+                                                    </svg>
+                                                </div>
+                                                <span 
+                                                    style="font-size: 13px; color: var(--text-primary); transition: all 0.2s;"
+                                                    :style="{ textDecoration: sub.completed ? 'line-through' : 'none', opacity: sub.completed ? 0.5 : 1 }"
+                                                >
+                                                    {{ sub.title }}
+                                                </span>
+                                            </div>
+
+                                            <!-- Subtask Delete button -->
+                                            <button 
+                                                class="subtask-del-btn" 
+                                                style="background: transparent; border: none; padding: 2px; color: var(--text-secondary); cursor: pointer; display: flex; align-items: center; opacity: 0.5; transition: opacity 0.2s;"
+                                                @click.stop="removeSubtask(todo, sub)"
+                                                :title="lang === 'zh' ? '删除子步骤' : 'Delete subtask'"
+                                            >
+                                                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                                                    <line x1="18" y1="6" x2="6" y2="18"></line>
+                                                    <line x1="6" y1="6" x2="18" y2="18"></line>
+                                                </svg>
+                                            </button>
+                                        </div>
+                                    </div>
+
+                                    <!-- Quick Subtask Input -->
+                                    <div class="subtask-input-wrapper" style="display: flex; gap: 8px; margin-top: 4px;" @dragstart.stop.prevent @mousedown.stop>
+                                        <input 
+                                            type="text" 
+                                            :placeholder="lang === 'zh' ? '新增子步骤...' : 'Add subtask...'" 
+                                            style="flex: 1; font-size: 12px; padding: 6px 10px; border: 1px solid var(--border-color); background: var(--bg-primary); color: var(--text-primary); border-radius: var(--radius-sm); outline: none; transition: border-color 0.2s;"
+                                            v-model="newSubtaskTitles[todo.id]"
+                                            @keyup.enter.stop="addSubtask(todo)"
+                                        />
+                                        <button 
+                                            type="button" 
+                                            style="font-size: 11px; padding: 4px 10px; background: var(--accent); color: var(--bg-secondary); border: none; border-radius: var(--radius-sm); cursor: pointer; font-weight: 600;"
+                                            @click.stop="addSubtask(todo)"
+                                        >
+                                            {{ lang === 'zh' ? '添加' : 'Add' }}
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Action Buttons -->
+                            <div class="item-actions">
+                                <!-- Restore (Trash only) -->
+                                <button v-if="todo.removed" class="action-btn restore" @click="restoreTodo(todo)" :title="lang === 'zh' ? '还原待办' : 'Restore task'">
+                                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                        <polyline points="23 4 23 10 17 10"></polyline>
+                                        <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"></path>
+                                    </svg>
+                                </button>
+                                <!-- Hard Delete (Trash only) -->
+                                <button v-if="todo.removed" class="action-btn delete" @click="hardDeleteTodo(todo)" :title="lang === 'zh' ? '永久删除' : 'Delete permanently'">
+                                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                        <polyline points="3 6 5 6 21 6"></polyline>
+                                        <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+                                        <line x1="10" y1="11" x2="10" y2="17"></line>
+                                        <line x1="14" y1="11" x2="14" y2="17"></line>
+                                    </svg>
+                                </button>
+                                
+                                <!-- Edit Inline (Active list only) -->
+                                <button v-if="!todo.removed && (editedTodo === null || editedTodo.id !== todo.id)" class="action-btn" @click="startEditTodo(todo)" :title="lang === 'zh' ? '编辑待办' : 'Edit task'">
+                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                                        <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
+                                        <path d="M18.5 2.5a2.121 2.121 0 1 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
+                                    </svg>
+                                </button>
+                                <!-- Delete to Bin (Active list only) -->
+                                <button v-if="!todo.removed" class="action-btn delete" @click="removeTodo(todo)" :title="lang === 'zh' ? '移动到回收站' : 'Move to recycle bin'">
+                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                                        <polyline points="3 6 5 6 21 6"></polyline>
+                                        <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+                                    </svg>
+                                </button>
+                            </div>
+                        </li>
+                    </ul>
+
+                    <!-- Empty state placeholder -->
+                    <div class="empty-placeholder" v-else>
+                        <div class="empty-icon">📝</div>
+                        <div class="empty-text-title" v-if="intention === 'all'">{{ t('emptyTasksTitle') }}</div>
+                        <div class="empty-text-title" v-else-if="intention === 'ongoing'">{{ t('emptyOngoingTitle') }}</div>
+                        <div class="empty-text-title" v-else-if="intention === 'completed'">{{ t('emptyCompletedTitle') }}</div>
+                        <div class="empty-text-title" v-else-if="intention === 'removed'">{{ t('emptyTrashTitle') }}</div>
+                        
+                        <div class="empty-instructions" v-if="intention !== 'removed'">
+                            <template v-if="lang === 'zh'">
+                                💡 快捷指南：<br/>
+                                ✔️ 所有提交与编辑均支持 <strong>Enter</strong> 键保存提交<br/>
+                                ✔️ 双击标语和待办卡片内容可直接进行<strong>编辑修改</strong><br/>
+                                ✔️ 鼠标拖拽或手机端<strong>触控上下滑动</strong>即可轻松排序<br/>
+                                ✔️ 所有的待办数据和配置均<strong>自动离线加密存储</strong>在浏览器本地
+                            </template>
+                            <template v-else>
+                                💡 Quick Guide:<br/>
+                                ✔️ All submissions and edits support <strong>Enter</strong> key to save<br/>
+                                ✔️ Double-click slogans and task cards to <strong>edit directly</strong><br/>
+                                ✔️ Drag with mouse or <strong>touch & slide</strong> on mobile to reorder easily<br/>
+                                ✔️ All todo data and configurations are <strong>automatically saved offline</strong> in local storage
+                            </template>
+                        </div>
+                    </div>
+                </main>
+
+                <!-- RIGHT PANEL: SIDEBAR WIDGETS -->
+                <aside class="side-bar">
+                    
+                    <!-- Progress Stats Widget -->
+                    <div class="sidebar-widget">
+                        <div class="widget-title">{{ t('progressRateTitle') }}</div>
+                        <div class="stats-container">
+                            <div class="stats-info">
+                                <span>{{ t('rateText') }}</span>
+                                <span>{{ progressRate }}%</span>
+                            </div>
+                            <div class="stats-progress-track">
+                                <div class="stats-progress-bar" :style="{ width: progressRate + '%' }"></div>
+                            </div>
+                            <div style="font-size: 12px; color: var(--text-secondary); margin-top: 4px; display: flex; justify-content: space-between;">
+                                <span>{{ lang === 'zh' ? '进行中' : 'Ongoing' }}: {{ leftTodosCount }}</span>
+                                <span>{{ lang === 'zh' ? '已完成' : 'Completed' }}: {{ completedTodosCount }}</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Filter Tabs Widget -->
+                    <div class="sidebar-widget">
+                        <div class="widget-title">{{ t('filterView') }}</div>
+                        <ul class="func-list">
+                            <li>
+                                <button class="func-btn" :class="{ active: intention === 'all' }" @click="intention = 'all'">
+                                    <span>📂 {{ lang === 'zh' ? '全部待办' : 'All Tasks' }}</span>
+                                    <span class="func-badge">{{ totalTodosCount }}</span>
+                                </button>
+                            </li>
+                            <li>
+                                <button class="func-btn" :class="{ active: intention === 'ongoing' }" @click="intention = 'ongoing'">
+                                    <span>⏳ {{ t('ongoing') }}</span>
+                                    <span class="func-badge">{{ leftTodosCount }}</span>
+                                </button>
+                            </li>
+                            <li>
+                                <button class="func-btn" :class="{ active: intention === 'completed' }" @click="intention = 'completed'">
+                                    <span>✅ {{ t('completed') }}</span>
+                                    <span class="func-badge">{{ completedTodosCount }}</span>
+                                </button>
+                            </li>
+                            <li>
+                                <button class="func-btn" :class="{ active: intention === 'removed' }" @click="intention = 'removed'">
+                                    <span>🗑️ {{ t('trash') }}</span>
+                                    <span class="func-badge">{{ recycleBin.length }}</span>
+                                </button>
+                            </li>
+                        </ul>
+                    </div>
+
+                    <!-- Tag Category Filter Widget (Active on todo view) -->
+                    <div class="sidebar-widget" v-if="intention !== 'removed'">
+                        <div class="widget-title">{{ t('tagFilter') }}</div>
+                        <div class="stats-info" style="margin-bottom: 8px;">
+                            <span style="font-size: 12px;">{{ t('clickToFilter') }}</span>
+                            <span v-if="selectedTagsFilter && selectedTagsFilter.length > 0" style="color: var(--color-danger); cursor: pointer; font-size: 11px;" @click="selectedTagsFilter.splice(0, selectedTagsFilter.length)">{{ t('clear') }}</span>
+                        </div>
+                        <div class="tag-manager-list">
+                            <span 
+                                v-for="tag in availableTags" 
+                                :key="tag" 
+                                class="widget-tag-pill" 
+                                :class="{ active: selectedTagsFilter.includes(tag) }"
+                                @click="toggleFilterTag(tag)"
+                            >
+                                {{ tag }}
+                            </span>
+                        </div>
+                    </div>
+
+                    <!-- Bulk Actions Widget -->
+                    <div class="sidebar-widget">
+                        <div class="widget-title">{{ t('bulkActions') }}</div>
+                        <div class="btn-grid">
+                            <button v-if="intention !== 'removed' && leftTodosCount > 0" class="btn-small" @click="markAllCompleted">
+                                {{ t('markAll') }}
+                            </button>
+                            <button v-if="intention !== 'removed' && completedTodosCount > 0" class="btn-small danger-text" @click="clearCompleted">
+                                {{ t('clearCompleted') }}
+                            </button>
+                            <button v-if="intention !== 'removed' && totalTodosCount > 0" class="btn-small danger-text" @click="clearAll">
+                                {{ t('clearAllTasks') }}
+                            </button>
+                            <button v-if="intention === 'removed' && recycleBin.length > 0" class="btn-small danger-text" @click="clearRecycleBin">
+                                {{ t('clearTrash') }}
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Data Backup & Portability Widget -->
+                    <div class="sidebar-widget">
+                        <div class="widget-title">{{ t('backupTitle') }}</div>
+                        <div class="btn-grid">
+                            <button class="btn-small" @click="exportData">
+                                {{ t('exportBackup') }}
+                            </button>
+                            <button class="btn-small" @click="triggerImportFile">
+                                {{ t('importBackup') }}
+                            </button>
+                            <input 
+                                type="file" 
+                                ref="fileImportRef" 
+                                accept=".json,.txt" 
+                                style="display: none;" 
+                                @change="handleImportFile" 
+                            />
+                        </div>
+                    </div>
+                </aside>
+            </div>
+
+            <!-- 🌟 MEETING MINUTES & AI WORKSPACE -->
+            <div class="notes-grid" v-show="activeTab === 'notes'">
+                <!-- Notes List Sidebar -->
+                <aside class="notes-sidebar">
+                    <button class="submit-btn" style="width: 100%; height: auto; padding: 12px;" @click="createNewNote">
+                        {{ t('newNote') }}
+                    </button>
+                    
+                    <ul class="notes-history-list" v-if="meetingNotes.length > 0">
+                        <li 
+                            v-for="note in meetingNotes" 
+                            :key="note.id" 
+                            class="note-history-card"
+                            :class="{ active: activeNoteId === note.id }"
+                            @click="selectNote(note)"
+                        >
+                            <div class="note-card-title" :title="note.title">{{ note.title }}</div>
+                            <div class="note-card-date">{{ note.date }}</div>
+                            <!-- Delete Button -->
+                            <button class="note-card-del-btn" @click.stop="deleteNote(note)" :title="lang === 'zh' ? '删除此纪要' : 'Delete this note'">
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                                    <polyline points="3 6 5 6 21 6"></polyline>
+                                    <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+                                </svg>
+                            </button>
+                        </li>
+                    </ul>
+                    
+                    <div v-else style="text-align: center; font-size: 13px; color: var(--text-secondary); margin-top: 20px;">
+                        {{ t('emptyNotesHistory') }}
+                    </div>
+                </aside>
+                
+                <!-- Document Editor & AI Workspace -->
+                <main class="notes-editor-card" v-if="activeNote">
+                    <!-- Document Title -->
+                    <input 
+                        type="text" 
+                        class="note-editor-title-input" 
+                        v-model="activeNote.title" 
+                        :placeholder="t('noteTitlePlaceholder')"
+                    />
+                    
+                    <!-- Recording & Action controls -->
+                    <div class="record-btn-wrapper">
+                        <!-- Speech Recognition Toggle Button -->
+                        <button 
+                            class="mic-record-btn" 
+                            :class="{ recording: isRecording }" 
+                            @click="toggleVoiceRecording(activeNote)"
+                            :disabled="isAudioTranscribing"
+                        >
+                            <span>🎙️</span>
+                            <span>{{ isRecording ? t('speechBtnRecording') : t('speechBtn') }}</span>
+                        </button>
+                        
+                        <!-- Visual Waveform pulsing -->
+                        <div class="mic-wave-container" v-if="isRecording">
+                            <span class="mic-wave-bar"></span>
+                            <span class="mic-wave-bar"></span>
+                            <span class="mic-wave-bar"></span>
+                            <span class="mic-wave-bar"></span>
+                            <span class="mic-wave-bar"></span>
+                        </div>
+
+                        <!-- 🌟 Local Audio File Upload Transcription Button -->
+                        <button 
+                            class="btn-small" 
+                            style="padding: 10px 16px; font-weight: 700; background: var(--bg-primary);" 
+                            @click="triggerAudioUpload"
+                            :disabled="isAudioTranscribing || isRecording"
+                        >
+                            <span>📁</span>
+                            <span>{{ isAudioTranscribing ? t('uploadAudioUploading') : t('uploadAudio') }}</span>
+                        </button>
+                        
+                        <!-- Hidden input for file selection -->
+                        <input 
+                            type="file" 
+                            ref="audioUploadFileInputRef" 
+                            accept="audio/*" 
+                            style="display: none;" 
+                            @change="handleAudioUpload" 
+                        />
+                        
+                        <!-- AI summarize trigger -->
+                        <button 
+                            class="btn-small" 
+                            style="padding: 10px 16px; font-weight: 700; background: var(--bg-primary);" 
+                            @click="generateAiSummary(activeNote)"
+                            :disabled="isAiSummarizing || isAudioTranscribing"
+                        >
+                            <span>🤖</span>
+                            <span>{{ isAiSummarizing ? t('aiSummarizing') : t('aiSummarize') }}</span>
+                        </button>
+                    </div>
+
+                    <!-- Interim live Speech-To-Text floating preview -->
+                    <div 
+                        v-if="isRecording && recordingInterimText" 
+                        style="font-size: 13px; padding: 10px 14px; border-radius: var(--radius-sm); background: rgba(220, 53, 69, 0.04); border-left: 3px solid var(--color-danger); color: var(--color-danger); font-style: italic; line-height: 1.4;"
+                    >
+                        {{ t('speechInterim') }} "{{ recordingInterimText }}"
+                    </div>
+
+                    <!-- 🌟 Audio File transcribing status -->
+                    <div 
+                        v-if="isAudioTranscribing" 
+                        style="font-size: 13.5px; padding: 12px 16px; border-radius: var(--radius-md); background: rgba(var(--accent-rgb), 0.05); border-left: 3px solid var(--accent); color: var(--accent); display: flex; align-items: center; gap: 10px; font-weight: 600;"
+                    >
+                        <span style="animation: pulse-recording 1.2s infinite alternate;">{{ t('audioTranscribingAlert') }}</span>
+                    </div>
+                    
+                    <!-- Editor Textarea -->
+                    <textarea 
+                        class="note-editor-textarea" 
+                        v-model="activeNote.content" 
+                        :placeholder="t('editorPlaceholder')"
+                    ></textarea>
+                    
+                    <!-- AI Summary Display Block -->
+                    <div class="ai-summary-card" v-if="activeNote.summary || isAiSummarizing">
+                        <div class="ai-summary-header">
+                            <div class="ai-summary-title">
+                                <span>🤖</span>
+                                <span>{{ t('aiSummaryHeader') }}</span>
+                            </div>
+                            <button 
+                                v-if="activeNote.summary && !isAiSummarizing" 
+                                class="btn-small" 
+                                style="padding: 4px 10px; font-size: 11px; background: var(--accent); color: var(--bg-secondary);" 
+                                @click="convertSummaryToTodos(activeNote)"
+                            >
+                                {{ t('aiSummaryImportBtn') }}
+                            </button>
+                        </div>
+                        
+                        <!-- Spinning loading state -->
+                        <div v-if="isAiSummarizing" style="padding: 30px 0; text-align: center; color: var(--accent);">
+                            <div style="font-weight: 700; animation: pulse-recording 1s infinite alternate; font-size: 14px;">
+                                {{ t('aiSummaryLoading') }}
+                            </div>
+                        </div>
+                        
+                        <!-- Markdown Text output -->
+                        <div v-else class="ai-summary-content" v-html="activeNote.summary"></div>
+                    </div>
+                    
+                    <!-- Empty Summary Placeholder -->
+                    <div class="ai-empty-placeholder" v-else>
+                        <span>🤖</span>
+                        <span>{{ t('aiSummaryPlaceholder') }}</span>
+                    </div>
+                </main>
+                
+                <div v-else class="notes-editor-card" style="align-items: center; justify-content: center; padding: 100px 20px; color: var(--text-secondary); text-align: center; width: 100%;">
+                    <span style="font-size: 40px; margin-bottom: 12px;">📝</span>
+                    <span style="font-weight: 700;">{{ t('emptyNoteSelection') }}</span>
+                </div>
+            </div>
+
+            <!-- 3. FOOTER SECTION -->
+            <footer class="footer-nav">
+                <div></div>
+                <div style="font-size: 13px; color: var(--text-secondary); text-align: right;">
+                    <span>Ros1 Todo © 2026. Made with ❤️ by Antigravity.</span>
+                </div>
+            </footer>
+
+        </div> <!-- Close .todo-app -->
+    </div> <!-- Close .todo-wrapper -->
+
+    <!-- 4. SETTINGS DRAWER OVERLAY (Safely outside todo-wrapper to prevent clipping stacking contexts) -->
+    <div class="settings-drawer-overlay" :class="{ active: settingsActive }" @click.self="toggleSettings">
+                <div class="settings-drawer">
+                    <div class="drawer-header">
+                        <div class="drawer-title">{{ t('settingsTitle') }}</div>
+                        <button class="btn-icon" @click="toggleSettings">
+                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                                <line x1="18" y1="6" x2="6" y2="18"></line>
+                                <line x1="6" y1="6" x2="18" y2="18"></line>
+                            </svg>
+                        </button>
+                    </div>
+
+                    <!-- Theme Switcher section -->
+                    <div class="settings-section">
+                        <div class="settings-section-title">{{ t('chooseTheme') }}</div>
+                        <div class="theme-selector">
+                            <div class="theme-opt" :class="{ active: theme === 'light' }" @click="changeTheme('light')">
+                                <div class="theme-preview-dot" style="background: #ffffff; border-color: rgba(0,0,0,0.1)"></div>
+                                <span>{{ t('themeLight') }}</span>
+                            </div>
+                            <div class="theme-opt" :class="{ active: theme === 'dark' }" @click="changeTheme('dark')">
+                                <div class="theme-preview-dot" style="background: #121824; border-color: rgba(255,255,255,0.1)"></div>
+                                <span>{{ t('themeDark') }}</span>
+                            </div>
+                            <div class="theme-opt" :class="{ active: theme === 'cyberpunk' }" @click="changeTheme('cyberpunk')">
+                                <div class="theme-preview-dot" style="background: #050508; border-color: #00ffcc"></div>
+                                <span>{{ t('themeCyberpunk') }}</span>
+                            </div>
+                            <div class="theme-opt" :class="{ active: theme === 'sage' }" @click="changeTheme('sage')">
+                                <div class="theme-preview-dot" style="background: #f4f6f3; border-color: #788c75"></div>
+                                <span>{{ t('themeSage') }}</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 🌟 Theme Accent Colors Swatch section -->
+                    <div class="settings-section">
+                        <div class="settings-section-title">{{ t('accentLabel') }}</div>
+                        <div class="accent-color-selector">
+                            <div class="accent-opt" :class="{ active: accentColor === 'default' }" @click="accentColor = 'default'" :title="t('accentDefault')">
+                                <span class="accent-dot default-dot"></span>
+                            </div>
+                            <div class="accent-opt" :class="{ active: accentColor === 'cyan' }" @click="accentColor = 'cyan'" :title="t('accentCyan')">
+                                <span class="accent-dot cyan-dot"></span>
+                            </div>
+                            <div class="accent-opt" :class="{ active: accentColor === 'green' }" @click="accentColor = 'green'" :title="t('accentGreen')">
+                                <span class="accent-dot green-dot"></span>
+                            </div>
+                            <div class="accent-opt" :class="{ active: accentColor === 'pink' }" @click="accentColor = 'pink'" :title="t('accentPink')">
+                                <span class="accent-dot pink-dot"></span>
+                            </div>
+                            <div class="accent-opt" :class="{ active: accentColor === 'purple' }" @click="accentColor = 'purple'" :title="t('accentPurple')">
+                                <span class="accent-dot purple-dot"></span>
+                            </div>
+                            <div class="accent-opt" :class="{ active: accentColor === 'orange' }" @click="accentColor = 'orange'" :title="t('accentOrange')">
+                                <span class="accent-dot orange-dot"></span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Preferences Section -->
+                    <div class="settings-section">
+                        <div class="settings-section-title">{{ t('sysPreferences') }}</div>
+                        
+                        <!-- Sound Toggle -->
+                        <div class="opt-row">
+                            <div class="opt-label-block">
+                                <div class="opt-title">{{ t('soundFeedback') }}</div>
+                                <div class="opt-desc">{{ t('soundFeedbackDesc') }}</div>
+                            </div>
+                            <label class="switch-control">
+                                <input type="checkbox" v-model="soundToggle" @change="toggleSound" />
+                                <span class="switch-slider"></span>
+                            </label>
+                        </div>
+
+                        <!-- Language Switcher -->
+                        <div class="settings-input-group" style="margin-top: 10px;">
+                            <label class="settings-input-label">{{ t('langLabel') }}</label>
+                            <select class="settings-input-control" v-model="lang">
+                                <option value="zh">简体中文 (Chinese)</option>
+                                <option value="en">English</option>
+                            </select>
+                        </div>
+
+                        <!-- Card Corner Style Dropdown -->
+                        <div class="settings-input-group" style="margin-top: 10px;">
+                            <label class="settings-input-label">{{ t('radiusLabel') }}</label>
+                            <select class="settings-input-control" v-model="radiusStyle">
+                                <option value="rounded">{{ t('radiusRounded') }}</option>
+                                <option value="sharp">{{ t('radiusSharp') }}</option>
+                                <option value="classic">{{ t('radiusClassic') }}</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <!-- 🌟 AI API Configurations -->
+                    <div class="settings-section">
+                        <div class="settings-section-title">{{ t('aiSecretatiryConfig') }}</div>
+                        
+                        <div class="settings-input-group">
+                            <label class="settings-input-label">{{ t('apiProviderLabel') }}</label>
+                            <select class="settings-input-control" v-model="apiProvider">
+                                <option value="gemini">Google Gemini ({{ lang === 'zh' ? '默认' : 'Default' }})</option>
+                                <option value="openai">OpenAI (GPT{{ lang === 'zh' ? '模型' : ' Models' }})</option>
+                                <option value="custom">DeepSeek / {{ lang === 'zh' ? '其它兼容接口' : 'Compatible APIs' }}</option>
+                            </select>
+                        </div>
+                        
+                        <div class="settings-input-group">
+                            <label class="settings-input-label">{{ t('apiKeyLabel') }}</label>
+                            <input 
+                                type="password" 
+                                class="settings-input-control" 
+                                :placeholder="lang === 'zh' ? '输入接口密钥...' : 'Enter API Key...'" 
+                                v-model="apiKey"
+                            />
+                        </div>
+                        
+                        <div class="settings-input-group">
+                            <label class="settings-input-label">{{ t('apiBaseUrlLabel') }}</label>
+                            <input 
+                                type="text" 
+                                class="settings-input-control" 
+                                :placeholder="lang === 'zh' ? '官方接口默认，可填代理地址' : 'Default endpoint, or enter custom proxy URL'" 
+                                v-model="apiBaseUrl"
+                            />
+                        </div>
+
+                        <!-- Test AI Connection button -->
+                        <button 
+                            class="submit-btn" 
+                            style="width: 100%; margin-top: 10px; padding: 12px; font-weight: 700; height: auto;" 
+                            @click="testAiConnection" 
+                            :disabled="isTestingConnection"
+                        >
+                            <span>{{ isTestingConnection ? t('testAiBtnTesting') : t('testAiBtn') }}</span>
+                        </button>
+                    </div>
+
+                    <!-- Author widget -->
+                    <div class="about-author-box">
+                        <div class="author-avatar">R</div>
+                        <div class="author-title">{{ t('aboutTitle') }}</div>
+                        <div class="author-bio">
+                            {{ t('aboutDesc') }}
+                        </div>
+                    </div>
+
+                    <!-- Reset system Button -->
+                    <div class="settings-section" style="margin-top: auto; padding-top: 20px;">
+                        <button class="btn-small danger-text" style="width: 100%; border-color: rgba(220,53,69,0.3);" @click="resetSystemData">
+                            {{ t('resetData') }}
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+    </div> <!-- Close #todo-app Vue Root Wrapper -->
+
+    <!-- Application Script -->
+    <script src="public/js/app.js"></script>
+</body>
+</html>
