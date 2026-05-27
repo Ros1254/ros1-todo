@@ -1244,16 +1244,118 @@ const app = createApp({
       }
     };
 
+    // 🌟 LOCAL OFFLINE RULE-BASED SUMMARY SECRETARY (NO-API OPTION)
+    const generateLocalSummary = (note) => {
+      isAiSummarizing.value = true;
+      SoundEffects.playClick();
+      
+      setTimeout(() => {
+        const text = note.content;
+        const lines = text.split('\n');
+        
+        let agendaItems = [];
+        let decisions = [];
+        let actionItems = [];
+        
+        lines.forEach(line => {
+          const trimmed = line.trim();
+          if (!trimmed) return;
+          
+          // Smart local checks for action items
+          if (trimmed.includes('待办') || trimmed.includes('负责') || trimmed.includes('行动') || trimmed.startsWith('-') || trimmed.startsWith('*') || trimmed.includes('任务') || trimmed.includes('跟进')) {
+            let clean = trimmed.replace(/^[-\*\s\d\.\、]+/, '').trim();
+            if (clean) {
+              let owner = lang.value === 'zh' ? '全员' : 'All';
+              const ownerMatch = clean.match(/@(\S+)|由(\S+)负责|完成人[:：](\S+)/);
+              if (ownerMatch) {
+                owner = ownerMatch[1] || ownerMatch[2] || ownerMatch[3];
+              }
+              actionItems.push(`- [ ] ${clean} @${owner}`);
+            }
+          }
+          // Smart local checks for decisions
+          else if (trimmed.includes('决定') || trimmed.includes('决议') || trimmed.includes('通过') || trimmed.includes('达成一致') || trimmed.includes('确定')) {
+            decisions.push(trimmed.replace(/^[-\*\s\d\.\、]+/, '').trim());
+          }
+          // General agenda points
+          else {
+            if (trimmed.length > 5) {
+              agendaItems.push(trimmed);
+            }
+          }
+        });
+        
+        // Fallbacks
+        if (agendaItems.length === 0) {
+          agendaItems.push(lang.value === 'zh' ? '讨论了会议中的各项日常事务与任务同步。' : 'Discussed routine meeting affairs and task updates.');
+        }
+        if (decisions.length === 0) {
+          decisions.push(lang.value === 'zh' ? '会议以同步进展为主，暂无重大方向决议。' : 'The meeting focused on progress updates; no major decisions made.');
+        }
+        if (actionItems.length === 0) {
+          if (lang.value === 'zh') {
+            actionItems.push('- [ ] 整理并跟进会议中的讨论要点 @负责人');
+            actionItems.push('- [ ] 安排下一次工作汇报会 @项目管理');
+          } else {
+            actionItems.push('- [ ] Follow up on meeting discussion points @Assignee');
+            actionItems.push('- [ ] Arrange the next status sync meeting @PM');
+          }
+        }
+        
+        // Build Markdown
+        let summaryMd = lang.value === 'zh' 
+          ? `### 🤖 本地离线秘书提炼结果 (无API运行模式)\n\n`
+          : `### 🤖 Local Offline Secretary Summary (No-API Mode)\n\n`;
+          
+        summaryMd += lang.value === 'zh' ? `#### 1. 【会议核心要点】\n` : `#### 1. 【Core Agenda Points】\n`;
+        agendaItems.slice(0, 5).forEach((item, idx) => {
+          summaryMd += `* **${lang.value === 'zh' ? '议题' : 'Topic'} ${idx + 1}**: ${item}\n`;
+        });
+        summaryMd += `\n`;
+        
+        summaryMd += lang.value === 'zh' ? `#### 2. 【核心决策】\n` : `#### 2. 【Key Decisions】\n`;
+        decisions.slice(0, 4).forEach((item, idx) => {
+          summaryMd += `* **${lang.value === 'zh' ? '决议' : 'Decision'} ${idx + 1}**: ${item}\n`;
+        });
+        summaryMd += `\n`;
+        
+        summaryMd += lang.value === 'zh' ? `#### 3. 【待办行动指南】\n` : `#### 3. 【Action Guidelines】\n`;
+        actionItems.forEach(item => {
+          summaryMd += `${item}\n`;
+        });
+        
+        note.summary = summaryMd;
+        isAiSummarizing.value = false;
+        SoundEffects.playSuccess();
+        
+        alert(
+          lang.value === 'zh' 
+            ? '离线秘书已成功为您提炼会议纪要！您可以点击右上方按钮「一键导入待办行动项」直接同步至您的待办清单中。'
+            : 'Offline secretary successfully summarized the notes! Click "Extract Action Items" to sync them to your Tasks List.', 
+          lang.value === 'zh' ? '离线提炼完成' : 'Summary Completed'
+        );
+      }, 800);
+    };
+
     // AI POWERED SUMMARIZATION ENGINE
     const generateAiSummary = async (note) => {
       if (!note.content || note.content.trim() === '') {
-        alert('会议纪要内容为空，请输入或录入会议内容后再发起AI总结！');
+        alert(lang.value === 'zh' ? '会议纪要内容为空，请输入或录入会议内容后再发起AI总结！' : 'Meeting notes content is empty!');
         return;
       }
       
       if (!apiKey.value || apiKey.value.trim() === '') {
-        alert('未配置 AI API Key，请打开右上角 [设置] 进行 AI API 接口配置！', '未配置 API Key');
-        settingsActive.value = true;
+        const textConfirm = lang.value === 'zh'
+          ? '您当前未配置 AI API Key。系统检测到此情况，是否为您启用【本地离线秘书】对纪要进行结构化提炼与待办项提取？（完全免费、100%离线，即时生成！）'
+          : 'AI API Key is not configured. Would you like to enable the [Local Offline Secretary] to structure your notes and extract tasks? (100% offline, free, and instant!)';
+          
+        confirm(textConfirm, lang.value === 'zh' ? '启用本地离线秘书' : 'Enable Offline Secretary').then((useLocal) => {
+          if (useLocal) {
+            generateLocalSummary(note);
+          } else {
+            settingsActive.value = true;
+          }
+        });
         return;
       }
 
