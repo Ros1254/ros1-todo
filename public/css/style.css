@@ -1725,10 +1725,17 @@ body {
   transition: all var(--transition-fast);
 }
 
-/* Override standard todo item rules for kanban cards */
+/* Override standard todo item rules for kanban cards with a high-fidelity vertical Grid */
 .kanban-board .todo-item {
+  display: grid;
+  grid-template-areas:
+    "check content"
+    "actions actions";
+  grid-template-columns: auto 1fr;
+  align-items: start;
+  gap: 12px;
   cursor: grab;
-  padding: 14px 16px;
+  padding: 16px;
   border-radius: var(--radius-md);
   margin-bottom: 0;
   box-shadow: 0 4px 10px var(--shadow-color);
@@ -1746,6 +1753,27 @@ body {
 
 .kanban-board .todo-item:active {
   cursor: grabbing;
+}
+
+.kanban-board .todo-check {
+  grid-area: check;
+  margin-top: 3px; /* Vertical alignment with title text */
+}
+
+.kanban-board .todo-content-block {
+  grid-area: content;
+  min-width: 0;
+  width: 100%;
+}
+
+.kanban-board .item-actions {
+  grid-area: actions;
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  border-top: 1px dashed var(--border-color);
+  padding-top: 10px;
+  margin-top: 4px;
 }
 
 

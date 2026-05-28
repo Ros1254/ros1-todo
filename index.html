@@ -561,7 +561,7 @@
                                                                 <polyline points="20 6 9 17 4 12"></polyline>
                                                             </svg>
                                                         </div>
-                                                        <span style="font-size: 13px; color: var(--text-primary); transition: all 0.2s;" :style="{ textDecoration: sub.completed ? 'line-through' : 'none', opacity: sub.completed ? 0.5 : 1 }">
+                                                        <span style="font-size: 13px; color: var(--text-primary); transition: all 0.2s; word-break: break-word; min-width: 0;" :style="{ textDecoration: sub.completed ? 'line-through' : 'none', opacity: sub.completed ? 0.5 : 1 }">
                                                             {{ sub.title }}
                                                         </span>
                                                     </div>
@@ -578,7 +578,7 @@
                                                 <input 
                                                     type="text" 
                                                     :placeholder="lang === 'zh' ? '新增子步骤...' : 'Add subtask...'" 
-                                                    style="flex: 1; font-size: 12px; padding: 6px 10px; border: 1px solid var(--border-color); background: var(--bg-primary); color: var(--text-primary); border-radius: var(--radius-sm); outline: none; transition: border-color 0.2s;"
+                                                    style="flex: 1; min-width: 0; font-size: 12px; padding: 6px 10px; border: 1px solid var(--border-color); background: var(--bg-primary); color: var(--text-primary); border-radius: var(--radius-sm); outline: none; transition: border-color 0.2s;"
                                                     v-model="newSubtaskTitles[todo.id]"
                                                     @keyup.enter.stop="addSubtask(todo)"
                                                 />
@@ -731,7 +731,7 @@
                                                                 <polyline points="20 6 9 17 4 12"></polyline>
                                                             </svg>
                                                         </div>
-                                                        <span style="font-size: 13px; color: var(--text-primary); transition: all 0.2s;" :style="{ textDecoration: sub.completed ? 'line-through' : 'none', opacity: sub.completed ? 0.5 : 1 }">
+                                                        <span style="font-size: 13px; color: var(--text-primary); transition: all 0.2s; word-break: break-word; min-width: 0;" :style="{ textDecoration: sub.completed ? 'line-through' : 'none', opacity: sub.completed ? 0.5 : 1 }">
                                                             {{ sub.title }}
                                                         </span>
                                                     </div>
@@ -748,7 +748,7 @@
                                                 <input 
                                                     type="text" 
                                                     :placeholder="lang === 'zh' ? '新增子步骤...' : 'Add subtask...'" 
-                                                    style="flex: 1; font-size: 12px; padding: 6px 10px; border: 1px solid var(--border-color); background: var(--bg-primary); color: var(--text-primary); border-radius: var(--radius-sm); outline: none; transition: border-color 0.2s;"
+                                                    style="flex: 1; min-width: 0; font-size: 12px; padding: 6px 10px; border: 1px solid var(--border-color); background: var(--bg-primary); color: var(--text-primary); border-radius: var(--radius-sm); outline: none; transition: border-color 0.2s;"
                                                     v-model="newSubtaskTitles[todo.id]"
                                                     @keyup.enter.stop="addSubtask(todo)"
                                                 />
@@ -901,7 +901,7 @@
                                                                 <polyline points="20 6 9 17 4 12"></polyline>
                                                             </svg>
                                                         </div>
-                                                        <span style="font-size: 13px; color: var(--text-primary); transition: all 0.2s;" :style="{ textDecoration: sub.completed ? 'line-through' : 'none', opacity: sub.completed ? 0.5 : 1 }">
+                                                        <span style="font-size: 13px; color: var(--text-primary); transition: all 0.2s; word-break: break-word; min-width: 0;" :style="{ textDecoration: sub.completed ? 'line-through' : 'none', opacity: sub.completed ? 0.5 : 1 }">
                                                             {{ sub.title }}
                                                         </span>
                                                     </div>
@@ -918,7 +918,7 @@
                                                 <input 
                                                     type="text" 
                                                     :placeholder="lang === 'zh' ? '新增子步骤...' : 'Add subtask...'" 
-                                                    style="flex: 1; font-size: 12px; padding: 6px 10px; border: 1px solid var(--border-color); background: var(--bg-primary); color: var(--text-primary); border-radius: var(--radius-sm); outline: none; transition: border-color 0.2s;"
+                                                    style="flex: 1; min-width: 0; font-size: 12px; padding: 6px 10px; border: 1px solid var(--border-color); background: var(--bg-primary); color: var(--text-primary); border-radius: var(--radius-sm); outline: none; transition: border-color 0.2s;"
                                                     v-model="newSubtaskTitles[todo.id]"
                                                     @keyup.enter.stop="addSubtask(todo)"
                                                 />
