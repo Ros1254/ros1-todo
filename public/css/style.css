@@ -1579,5 +1579,167 @@ body {
   }
 }
 
+/* ==========================================================================
+   📊 PHASE 3: KANBAN BOARD SYSTEM STYLES (Trello & Linear Glassmorphic Layout)
+   ========================================================================== */
+
+/* 📋 List / 📊 Kanban View Switcher Tabs */
+.view-switcher-tabs {
+  background: rgba(var(--accent-rgb), 0.02);
+  padding: 4px;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border-color);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+  margin-bottom: 20px;
+  display: flex;
+  gap: 8px;
+  width: fit-content;
+}
+
+.view-tab-btn {
+  transition: all var(--transition-fast) !important;
+}
+
+.view-tab-btn:hover {
+  background: rgba(var(--accent-rgb), 0.05) !important;
+  color: var(--text-primary) !important;
+}
+
+.view-tab-btn.active {
+  background: var(--accent) !important;
+  color: var(--bg-secondary) !important;
+  box-shadow: 0 4px 12px var(--glow-color) !important;
+}
+
+/* Kanban Board Container Grid */
+.kanban-board {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 20px;
+  width: 100%;
+  margin-top: 10px;
+  align-items: start;
+  box-sizing: border-box;
+}
+
+/* Responsive folding for mobile viewport */
+@media (max-width: 992px) {
+  .kanban-board {
+    grid-template-columns: 1fr;
+    gap: 24px;
+  }
+}
+
+/* Kanban Column Container */
+.kanban-column {
+  background: rgba(var(--bg-secondary), 0.5);
+  border: 1.5px solid var(--border-color);
+  border-radius: var(--radius-lg);
+  padding: 16px 14px;
+  min-height: 550px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  transition: all var(--transition-normal);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  box-shadow: 0 4px 16px var(--shadow-color);
+  box-sizing: border-box;
+}
+
+/* Drag Over high-fidelity column feedback */
+.kanban-column.drag-over {
+  background: rgba(var(--accent-rgb), 0.06);
+  border-color: var(--accent);
+  box-shadow: 0 8px 30px rgba(var(--accent-rgb), 0.15);
+  transform: translateY(-2px);
+}
+
+/* Column Header Details */
+.kanban-column-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: 2px solid var(--border-color);
+  padding-bottom: 12px;
+  margin-bottom: 2px;
+}
+
+.kanban-column-title {
+  font-size: 13px;
+  font-weight: 800;
+  color: var(--text-primary);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+}
+
+.kanban-column-count {
+  background: rgba(var(--accent-rgb), 0.08);
+  color: var(--accent);
+  font-size: 11px;
+  font-weight: 800;
+  padding: 2px 8px;
+  border-radius: 20px;
+  border: 1px solid rgba(var(--accent-rgb), 0.15);
+}
+
+/* Cards Wrapper inside Column */
+.kanban-column-content {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  flex-grow: 1;
+  min-height: 480px;
+  box-sizing: border-box;
+}
+
+/* empty Column state tip */
+.kanban-empty-tip {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 2px dashed var(--border-color);
+  border-radius: var(--radius-md);
+  padding: 24px 16px;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--text-secondary);
+  opacity: 0.5;
+  text-align: center;
+  margin: auto;
+  pointer-events: none;
+  width: 100%;
+  box-sizing: border-box;
+  background: rgba(var(--accent-rgb), 0.01);
+  transition: all var(--transition-fast);
+}
+
+/* Override standard todo item rules for kanban cards */
+.kanban-board .todo-item {
+  cursor: grab;
+  padding: 14px 16px;
+  border-radius: var(--radius-md);
+  margin-bottom: 0;
+  box-shadow: 0 4px 10px var(--shadow-color);
+}
+
+.kanban-board .todo-item:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 18px var(--shadow-color);
+}
+
+.kanban-board .todo-item.priority-high:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 12px 32px rgba(255, 0, 127, 0.22);
+}
+
+.kanban-board .todo-item:active {
+  cursor: grabbing;
+}
+
 
 

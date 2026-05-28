@@ -430,7 +430,8 @@ const STORAGE_KEYS = {
   shortBreakDuration: 'ros1-todo-sbreak-dur',
   longBreakDuration: 'ros1-todo-lbreak-dur',
   notification: 'ros1-todo-notification-toggle',
-  lastCheck: 'ros1-todo-last-check-date'
+  lastCheck: 'ros1-todo-last-check-date',
+  currentView: 'ros1-todo-current-view'
 };
 
 // HELPER UTILITY FOR Multimodal Audio base64 conversions
@@ -514,6 +515,11 @@ const app = createApp({
     const newTodoPriority = ref('normal'); // 'low', 'normal', 'high'
     const newTodoRecurrence = ref('none'); // 'none', 'daily', 'weekly', 'monthly'
 
+    // 📊 Kanban Board States (Phase 3)
+    const currentView = ref('list'); // 'list' or 'kanban'
+    const draggedTodo = ref(null);
+    const activeDragOverColumn = ref(null);
+
     // Fetch local storage initial state
     const fetchStorage = () => {
       try {
@@ -538,6 +544,9 @@ const app = createApp({
 
         // Load Notification toggles (Phase 4)
         notificationToggle.value = localStorage.getItem(STORAGE_KEYS.notification) === 'true';
+
+        // Load Kanban view preferences (Phase 3)
+        currentView.value = localStorage.getItem(STORAGE_KEYS.currentView) || 'list';
 
         // Sync HTML data attribute with theme
         document.documentElement.setAttribute('data-theme', theme.value);
@@ -599,6 +608,7 @@ const app = createApp({
     watch(shortBreakDuration, saveShortBreakDuration);
     watch(longBreakDuration, saveLongBreakDuration);
     watch(notificationToggle, saveNotificationToggle);
+    watch(currentView, (newVal) => localStorage.setItem(STORAGE_KEYS.currentView, newVal));
     watch(appMode, (newMode) => {
       saveAppMode();
       if (newMode === 'normal') {
@@ -656,6 +666,19 @@ const app = createApp({
       }
 
       return result;
+    });
+
+    // 📊 Kanban Board Column Filters (Phase 3)
+    const kanbanTodoTasks = computed(() => {
+      return filteredTodos.value.filter(t => !t.removed && (t.status === 'todo' || (!t.status && !t.completed)));
+    });
+
+    const kanbanProgressTasks = computed(() => {
+      return filteredTodos.value.filter(t => !t.removed && t.status === 'progress');
+    });
+
+    const kanbanDoneTasks = computed(() => {
+      return filteredTodos.value.filter(t => !t.removed && (t.status === 'done' || (!t.status && t.completed)));
     });
 
     const showEmptyTips = computed(() => {
@@ -1434,6 +1457,121 @@ const app = createApp({
       SoundEffects.playClick();
     };
 
+    // 📊 KANBAN BOARD DRAG & DROP ENGINE (Phase 3)
+    const moveTodoToStatus = (todo, status) => {
+      if (!todo) return;
+      
+      const prevStatus = todo.status || (todo.completed ? 'done' : 'todo');
+      if (prevStatus === status) return;
+      
+      todo.status = status;
+      
+      if (status === 'done') {
+        if (!todo.completed) {
+          todo.completed = true;
+          // Also complete all subtasks
+          if (todo.subtasks && todo.subtasks.length > 0) {
+            todo.subtasks.forEach(s => s.completed = true);
+          }
+          SoundEffects.playSuccess();
+          createFirework();
+        }
+      } else {
+        if (todo.completed) {
+          todo.completed = false;
+          SoundEffects.playClick();
+        } else {
+          SoundEffects.playClick();
+        }
+      }
+      
+      saveTodos();
+    };
+
+    const handleKanbanDragStart = (todo, event) => {
+      if (editedTodo.value !== null) return;
+      draggedTodo.value = todo;
+      if (event.dataTransfer) {
+        event.dataTransfer.effectAllowed = 'move';
+        event.dataTransfer.setData('text/plain', todo.id.toString());
+      }
+    };
+
+    const handleKanbanDragEnd = () => {
+      draggedTodo.value = null;
+      activeDragOverColumn.value = null;
+    };
+
+    const handleKanbanDragEnter = (status, event) => {
+      event.preventDefault();
+      activeDragOverColumn.value = status;
+    };
+
+    const handleKanbanDragLeave = (event) => {
+      // Event placeholder
+    };
+
+    const handleKanbanDrop = (status, event) => {
+      event.preventDefault();
+      if (draggedTodo.value) {
+        moveTodoToStatus(draggedTodo.value, status);
+      }
+      activeDragOverColumn.value = null;
+      draggedTodo.value = null;
+    };
+
+    // Mobile touch controls for Kanban
+    let touchDraggedTodo = null;
+    let touchHoveredColumnStatus = null;
+
+    const handleKanbanTouchStart = (todo, event) => {
+      if (editedTodo.value !== null) return;
+      touchDraggedTodo = todo;
+    };
+
+    const handleKanbanTouchMove = (event) => {
+      if (!touchDraggedTodo) return;
+      
+      const touch = event.touches[0];
+      const elem = document.elementFromPoint(touch.clientX, touch.clientY);
+      
+      if (!elem) return;
+      
+      const column = elem.closest('.kanban-column');
+      
+      // Clean up drag-over from all columns
+      document.querySelectorAll('.kanban-column').forEach(col => {
+        col.classList.remove('drag-over');
+      });
+      
+      if (column) {
+        column.classList.add('drag-over');
+        const contentEl = column.querySelector('.kanban-column-content');
+        if (contentEl) {
+          touchHoveredColumnStatus = contentEl.getAttribute('data-status');
+        }
+      } else {
+        touchHoveredColumnStatus = null;
+      }
+    };
+
+    const handleKanbanTouchEnd = (columnStatus, event) => {
+      if (!touchDraggedTodo) return;
+      
+      const targetStatus = touchHoveredColumnStatus || columnStatus;
+      if (targetStatus) {
+        moveTodoToStatus(touchDraggedTodo, targetStatus);
+      }
+      
+      // Clean up columns drag-over state
+      document.querySelectorAll('.kanban-column').forEach(col => {
+        col.classList.remove('drag-over');
+      });
+      
+      touchDraggedTodo = null;
+      touchHoveredColumnStatus = null;
+    };
+
     // GENERAL UTILITIES
     const toggleSettings = () => {
       SoundEffects.playClick();
@@ -1968,6 +2106,23 @@ const app = createApp({
       handleTouchStart,
       handleTouchMove,
       handleTouchEnd,
+      
+      // 📊 Kanban Board Phase 3
+      currentView,
+      draggedTodo,
+      activeDragOverColumn,
+      kanbanTodoTasks,
+      kanbanProgressTasks,
+      kanbanDoneTasks,
+      handleKanbanDragStart,
+      handleKanbanDragEnd,
+      handleKanbanDragEnter,
+      handleKanbanDragLeave,
+      handleKanbanDrop,
+      handleKanbanTouchStart,
+      handleKanbanTouchMove,
+      handleKanbanTouchEnd,
+      moveTodoToStatus,
       
       // Settings UI
       toggleSettings,

@@ -203,226 +203,766 @@
                         </div>
                     </div>
 
-                    <!-- List of Tasks -->
-                    <ul class="todo-list" v-if="filteredTodos.length > 0">
-                        <li 
-                            v-for="(todo, index) in filteredTodos" 
-                            :key="todo.id" 
-                            class="todo-item"
-                            :class="{ dragging: dragIndex === index, 'priority-high': appMode === 'advanced' && todo.priority === 'high', 'priority-low': appMode === 'advanced' && todo.priority === 'low' }"
-                            :draggable="editedTodo === null || editedTodo.id !== todo.id"
-                            :data-id="todo.id"
-                            @dragstart="handleDragStart(index, $event)"
-                            @dragend="handleDragEnd($event)"
-                            @dragover="handleDragOver(index, $event)"
-                            @dragenter="handleDragOver(index, $event)"
-                            @touchstart="handleTouchStart(index, $event)"
-                            @touchmove="handleTouchMove($event)"
-                            @touchend="handleTouchEnd"
+                    <!-- 📋 List / 📊 Kanban View Switcher (Phase 3, Advanced Mode only) -->
+                    <div class="view-switcher-tabs" v-if="appMode === 'advanced'" style="display: flex; gap: 12px; margin-bottom: 18px; border-bottom: 1.5px solid var(--border-color); padding-bottom: 8px;">
+                        <button 
+                            type="button" 
+                            class="view-tab-btn" 
+                            :class="{ active: currentView === 'list' }" 
+                            @click="currentView = 'list'; SoundEffects.playClick();"
+                            style="border: none; background: transparent; padding: 6px 16px; font-size: 13px; font-weight: 700; border-radius: var(--radius-sm); cursor: pointer; color: var(--text-secondary); transition: all 0.2s; display: flex; align-items: center; gap: 6px;"
                         >
-                            <!-- Circle Checkbox -->
-                            <div 
-                                class="todo-check" 
-                                :class="{ completed: todo.completed }" 
-                                @click="toggleTodoComplete(todo, $event)"
-                                v-if="!todo.removed"
+                            📋 {{ lang === 'zh' ? '列表视图' : 'List View' }}
+                        </button>
+                        <button 
+                            type="button" 
+                            class="view-tab-btn" 
+                            :class="{ active: currentView === 'kanban' }" 
+                            @click="currentView = 'kanban'; SoundEffects.playClick();"
+                            style="border: none; background: transparent; padding: 6px 16px; font-size: 13px; font-weight: 700; border-radius: var(--radius-sm); cursor: pointer; color: var(--text-secondary); transition: all 0.2s; display: flex; align-items: center; gap: 6px;"
+                        >
+                            📊 {{ lang === 'zh' ? '看板视图' : 'Kanban Board' }}
+                        </button>
+                    </div>
+
+                    <!-- List View Wrapper (Normal Mode or currentView === 'list') -->
+                    <template v-if="appMode !== 'advanced' || currentView === 'list'">
+                        <!-- List of Tasks -->
+                        <ul class="todo-list" v-if="filteredTodos.length > 0">
+                            <li 
+                                v-for="(todo, index) in filteredTodos" 
+                                :key="todo.id" 
+                                class="todo-item"
+                                :class="{ dragging: dragIndex === index, 'priority-high': appMode === 'advanced' && todo.priority === 'high', 'priority-low': appMode === 'advanced' && todo.priority === 'low' }"
+                                :draggable="editedTodo === null || editedTodo.id !== todo.id"
+                                :data-id="todo.id"
+                                @dragstart="handleDragStart(index, $event)"
+                                @dragend="handleDragEnd($event)"
+                                @dragover="handleDragOver(index, $event)"
+                                @dragenter="handleDragOver(index, $event)"
+                                @touchstart="handleTouchStart(index, $event)"
+                                @touchmove="handleTouchMove($event)"
+                                @touchend="handleTouchEnd"
                             >
-                                <svg class="todo-check-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round" stroke-linejoin="round">
-                                    <polyline points="20 6 9 17 4 12"></polyline>
-                                </svg>
-                            </div>
+                                <!-- Circle Checkbox -->
+                                <div 
+                                    class="todo-check" 
+                                    :class="{ completed: todo.completed }" 
+                                    @click="toggleTodoComplete(todo, $event)"
+                                    v-if="!todo.removed"
+                                >
+                                    <svg class="todo-check-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round" stroke-linejoin="round">
+                                        <polyline points="20 6 9 17 4 12"></polyline>
+                                    </svg>
+                                </div>
 
-                            <!-- Task Text Content -->
-                            <div class="todo-content-block" @dblclick="startEditTodo(todo)">
-                                <div v-if="editedTodo === null || editedTodo.id !== todo.id">
-                                    <span class="todo-title" :class="{ completed: todo.completed }">
-                                        <!-- Priority badge (Phase 4) -->
-                                        <span 
-                                            v-if="appMode === 'advanced' && !todo.removed" 
-                                            class="priority-badge" 
-                                            :class="todo.priority || 'normal'" 
-                                            @click.stop="cycleTodoPriority(todo)"
-                                            style="margin-right: 6px; display: inline-flex; align-items: center; justify-content: center; font-size: 9px; font-weight: 800; padding: 2px 6px; border-radius: 4px; cursor: pointer; text-transform: uppercase; user-select: none;"
-                                        >
-                                            {{ todo.priority === 'high' ? 'High' : (todo.priority === 'low' ? 'Low' : 'Norm') }}
+                                <!-- Task Text Content -->
+                                <div class="todo-content-block" @dblclick="startEditTodo(todo)">
+                                    <div v-if="editedTodo === null || editedTodo.id !== todo.id">
+                                        <span class="todo-title" :class="{ completed: todo.completed }">
+                                            <!-- Priority badge (Phase 4) -->
+                                            <span 
+                                                v-if="appMode === 'advanced' && !todo.removed" 
+                                                class="priority-badge" 
+                                                :class="todo.priority || 'normal'" 
+                                                @click.stop="cycleTodoPriority(todo)"
+                                                style="margin-right: 6px; display: inline-flex; align-items: center; justify-content: center; font-size: 9px; font-weight: 800; padding: 2px 6px; border-radius: 4px; cursor: pointer; text-transform: uppercase; user-select: none;"
+                                            >
+                                                {{ todo.priority === 'high' ? 'High' : (todo.priority === 'low' ? 'Low' : 'Norm') }}
+                                            </span>
+
+                                            {{ todo.title }}
+
+                                            <!-- Recurrence badge (Phase 4) -->
+                                            <span 
+                                                v-if="appMode === 'advanced' && todo.recurrence && todo.recurrence !== 'none' && !todo.removed" 
+                                                class="recurrence-badge" 
+                                                style="margin-left: 6px; display: inline-flex; align-items: center; gap: 3px; font-size: 9.5px; font-weight: 700; color: var(--text-secondary); background: rgba(var(--accent-rgb), 0.04); border: 1px solid var(--border-color); padding: 2px 6px; border-radius: 4px;"
+                                            >
+                                                <span>🔁</span>
+                                                <span>{{ todo.recurrence === 'daily' ? (lang === 'zh' ? '每日' : 'Daily') : (todo.recurrence === 'weekly' ? (lang === 'zh' ? '每周' : 'Weekly') : (lang === 'zh' ? '每月' : 'Monthly')) }}</span>
+                                            </span>
                                         </span>
-
-                                        {{ todo.title }}
-
-                                        <!-- Recurrence badge (Phase 4) -->
-                                        <span 
-                                            v-if="appMode === 'advanced' && todo.recurrence && todo.recurrence !== 'none' && !todo.removed" 
-                                            class="recurrence-badge" 
-                                            style="margin-left: 6px; display: inline-flex; align-items: center; gap: 3px; font-size: 9.5px; font-weight: 700; color: var(--text-secondary); background: rgba(var(--accent-rgb), 0.04); border: 1px solid var(--border-color); padding: 2px 6px; border-radius: 4px;"
-                                        >
-                                            <span>🔁</span>
-                                            <span>{{ todo.recurrence === 'daily' ? (lang === 'zh' ? '每日' : 'Daily') : (todo.recurrence === 'weekly' ? (lang === 'zh' ? '每周' : 'Weekly') : (lang === 'zh' ? '每月' : 'Monthly')) }}</span>
-                                        </span>
-                                    </span>
-                                </div>
-                                <div v-else>
-                                    <input 
-                                        type="text" 
-                                        class="edit-todo-input" 
-                                        v-model="todo.title" 
-                                        :id="'edit-input-' + todo.id"
-                                        @keyup.enter="finishEditTodo(todo)" 
-                                        @keyup.esc="cancelEditTodo(todo)" 
-                                        @blur="finishEditTodo(todo)"
-                                    />
-                                </div>
-
-                                <!-- Pill Tags inside item -->
-                                <div class="todo-tags" v-if="todo.tags && todo.tags.length > 0">
-                                    <span v-for="tag in todo.tags" :key="tag" class="tag-pill">
-                                        {{ tag }}
-                                    </span>
-                                </div>
-
-                                <!-- Subtasks Checklist Section -->
-                                <div class="subtask-section" v-if="!todo.removed" style="margin-top: 12px; padding-top: 12px; border-top: 1px dashed var(--border-color); display: flex; flex-direction: column; gap: 8px;">
-                                    <!-- Progress Bar for Subtasks -->
-                                    <div class="subtask-progress-wrapper" v-if="todo.subtasks && todo.subtasks.length > 0" style="display: flex; align-items: center; gap: 8px; font-size: 11px; color: var(--text-secondary);">
-                                        <div style="flex-shrink: 0; font-weight: 700;">{{ lang === 'zh' ? '子步骤' : 'Subtasks' }}: {{ getSubtaskStats(todo).completed }}/{{ getSubtaskStats(todo).total }}</div>
-                                        <div style="flex: 1; height: 4px; background: var(--border-color); border-radius: 2px; overflow: hidden;">
-                                            <div style="height: 100%; background: var(--accent); transition: width 0.3s ease;" :style="{ width: getSubtaskStats(todo).percentage + '%' }"></div>
-                                        </div>
-                                        <div style="flex-shrink: 0; font-weight: 700;">{{ getSubtaskStats(todo).percentage }}%</div>
+                                    </div>
+                                    <div v-else>
+                                        <input 
+                                            type="text" 
+                                            class="edit-todo-input" 
+                                            v-model="todo.title" 
+                                            :id="'edit-input-' + todo.id"
+                                            @keyup.enter="finishEditTodo(todo)" 
+                                            @keyup.esc="cancelEditTodo(todo)" 
+                                            @blur="finishEditTodo(todo)"
+                                        />
                                     </div>
 
-                                    <!-- Subtask list -->
-                                    <div class="subtask-list" v-if="todo.subtasks && todo.subtasks.length > 0" style="display: flex; flex-direction: column; gap: 6px; padding-left: 2px;">
-                                        <div 
-                                            v-for="sub in todo.subtasks" 
-                                            :key="sub.id" 
-                                            class="subtask-item" 
-                                            style="display: flex; align-items: center; justify-content: space-between; gap: 8px;"
-                                        >
-                                            <div style="display: flex; align-items: center; gap: 8px; flex: 1;">
-                                                <!-- Small Subtask checkbox -->
-                                                <div 
-                                                    class="subtask-check" 
-                                                    style="width: 16px; height: 16px; border-radius: 4px; border: 1.5px solid var(--border-color); cursor: pointer; display: flex; align-items: center; justify-content: center; transition: all 0.2s; flex-shrink: 0;"
-                                                    :style="{ borderColor: sub.completed ? 'var(--color-success)' : 'var(--border-color)', background: sub.completed ? 'var(--color-success)' : 'transparent' }"
-                                                    @click.stop="toggleSubtask(todo, sub, $event)"
-                                                >
-                                                    <svg v-if="sub.completed" width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="#ffffff" stroke-width="5" stroke-linecap="round" stroke-linejoin="round">
-                                                        <polyline points="20 6 9 17 4 12"></polyline>
-                                                    </svg>
-                                                </div>
-                                                <span 
-                                                    style="font-size: 13px; color: var(--text-primary); transition: all 0.2s;"
-                                                    :style="{ textDecoration: sub.completed ? 'line-through' : 'none', opacity: sub.completed ? 0.5 : 1 }"
-                                                >
-                                                    {{ sub.title }}
-                                                </span>
-                                            </div>
+                                    <!-- Pill Tags inside item -->
+                                    <div class="todo-tags" v-if="todo.tags && todo.tags.length > 0">
+                                        <span v-for="tag in todo.tags" :key="tag" class="tag-pill">
+                                            {{ tag }}
+                                        </span>
+                                    </div>
 
-                                            <!-- Subtask Delete button -->
-                                            <button 
-                                                class="subtask-del-btn" 
-                                                style="background: transparent; border: none; padding: 2px; color: var(--text-secondary); cursor: pointer; display: flex; align-items: center; opacity: 0.5; transition: opacity 0.2s;"
-                                                @click.stop="removeSubtask(todo, sub)"
-                                                :title="lang === 'zh' ? '删除子步骤' : 'Delete subtask'"
+                                    <!-- Subtasks Checklist Section -->
+                                    <div class="subtask-section" v-if="!todo.removed" style="margin-top: 12px; padding-top: 12px; border-top: 1px dashed var(--border-color); display: flex; flex-direction: column; gap: 8px;">
+                                        <!-- Progress Bar for Subtasks -->
+                                        <div class="subtask-progress-wrapper" v-if="todo.subtasks && todo.subtasks.length > 0" style="display: flex; align-items: center; gap: 8px; font-size: 11px; color: var(--text-secondary);">
+                                            <div style="flex-shrink: 0; font-weight: 700;">{{ lang === 'zh' ? '子步骤' : 'Subtasks' }}: {{ getSubtaskStats(todo).completed }}/{{ getSubtaskStats(todo).total }}</div>
+                                            <div style="flex: 1; height: 4px; background: var(--border-color); border-radius: 2px; overflow: hidden;">
+                                                <div style="height: 100%; background: var(--accent); transition: width 0.3s ease;" :style="{ width: getSubtaskStats(todo).percentage + '%' }"></div>
+                                            </div>
+                                            <div style="flex-shrink: 0; font-weight: 700;">{{ getSubtaskStats(todo).percentage }}%</div>
+                                        </div>
+
+                                        <!-- Subtask list -->
+                                        <div class="subtask-list" v-if="todo.subtasks && todo.subtasks.length > 0" style="display: flex; flex-direction: column; gap: 6px; padding-left: 2px;">
+                                            <div 
+                                                v-for="sub in todo.subtasks" 
+                                                :key="sub.id" 
+                                                class="subtask-item" 
+                                                style="display: flex; align-items: center; justify-content: space-between; gap: 8px;"
                                             >
-                                                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-                                                    <line x1="18" y1="6" x2="6" y2="18"></line>
-                                                    <line x1="6" y1="6" x2="18" y2="18"></line>
-                                                </svg>
+                                                <div style="display: flex; align-items: center; gap: 8px; flex: 1;">
+                                                    <!-- Small Subtask checkbox -->
+                                                    <div 
+                                                        class="subtask-check" 
+                                                        style="width: 16px; height: 16px; border-radius: 4px; border: 1.5px solid var(--border-color); cursor: pointer; display: flex; align-items: center; justify-content: center; transition: all 0.2s; flex-shrink: 0;"
+                                                        :style="{ borderColor: sub.completed ? 'var(--color-success)' : 'var(--border-color)', background: sub.completed ? 'var(--color-success)' : 'transparent' }"
+                                                        @click.stop="toggleSubtask(todo, sub, $event)"
+                                                    >
+                                                        <svg v-if="sub.completed" width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="#ffffff" stroke-width="5" stroke-linecap="round" stroke-linejoin="round">
+                                                            <polyline points="20 6 9 17 4 12"></polyline>
+                                                        </svg>
+                                                    </div>
+                                                    <span 
+                                                        style="font-size: 13px; color: var(--text-primary); transition: all 0.2s;"
+                                                        :style="{ textDecoration: sub.completed ? 'line-through' : 'none', opacity: sub.completed ? 0.5 : 1 }"
+                                                    >
+                                                        {{ sub.title }}
+                                                    </span>
+                                                </div>
+
+                                                <!-- Subtask Delete button -->
+                                                <button 
+                                                    class="subtask-del-btn" 
+                                                    style="background: transparent; border: none; padding: 2px; color: var(--text-secondary); cursor: pointer; display: flex; align-items: center; opacity: 0.5; transition: opacity 0.2s;"
+                                                    @click.stop="removeSubtask(todo, sub)"
+                                                    :title="lang === 'zh' ? '删除子步骤' : 'Delete subtask'"
+                                                >
+                                                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                                                        <line x1="18" y1="6" x2="6" y2="18"></line>
+                                                        <line x1="6" y1="6" x2="18" y2="18"></line>
+                                                    </svg>
+                                                </button>
+                                            </div>
+                                        </div>
+
+                                        <!-- Quick Subtask Input -->
+                                        <div class="subtask-input-wrapper" style="display: flex; gap: 8px; margin-top: 4px;" @dragstart.stop.prevent @mousedown.stop>
+                                            <input 
+                                                type="text" 
+                                                :placeholder="lang === 'zh' ? '新增子步骤...' : 'Add subtask...'" 
+                                                style="flex: 1; font-size: 12px; padding: 6px 10px; border: 1px solid var(--border-color); background: var(--bg-primary); color: var(--text-primary); border-radius: var(--radius-sm); outline: none; transition: border-color 0.2s;"
+                                                v-model="newSubtaskTitles[todo.id]"
+                                                @keyup.enter.stop="addSubtask(todo)"
+                                            />
+                                            <button 
+                                                type="button" 
+                                                style="font-size: 11px; padding: 4px 10px; background: var(--accent); color: var(--bg-secondary); border: none; border-radius: var(--radius-sm); cursor: pointer; font-weight: 600;"
+                                                @click.stop="addSubtask(todo)"
+                                            >
+                                                {{ lang === 'zh' ? '添加' : 'Add' }}
                                             </button>
                                         </div>
                                     </div>
+                                </div>
 
-                                    <!-- Quick Subtask Input -->
-                                    <div class="subtask-input-wrapper" style="display: flex; gap: 8px; margin-top: 4px;" @dragstart.stop.prevent @mousedown.stop>
-                                        <input 
-                                            type="text" 
-                                            :placeholder="lang === 'zh' ? '新增子步骤...' : 'Add subtask...'" 
-                                            style="flex: 1; font-size: 12px; padding: 6px 10px; border: 1px solid var(--border-color); background: var(--bg-primary); color: var(--text-primary); border-radius: var(--radius-sm); outline: none; transition: border-color 0.2s;"
-                                            v-model="newSubtaskTitles[todo.id]"
-                                            @keyup.enter.stop="addSubtask(todo)"
-                                        />
-                                        <button 
-                                            type="button" 
-                                            style="font-size: 11px; padding: 4px 10px; background: var(--accent); color: var(--bg-secondary); border: none; border-radius: var(--radius-sm); cursor: pointer; font-weight: 600;"
-                                            @click.stop="addSubtask(todo)"
-                                        >
-                                            {{ lang === 'zh' ? '添加' : 'Add' }}
+                                <!-- Action Buttons -->
+                                <div class="item-actions">
+                                    <!-- Restore (Trash only) -->
+                                    <button v-if="todo.removed" class="action-btn restore" @click="restoreTodo(todo)" :title="lang === 'zh' ? '还原待办' : 'Restore task'">
+                                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                            <polyline points="23 4 23 10 17 10"></polyline>
+                                            <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"></path>
+                                        </svg>
+                                    </button>
+                                    <!-- Hard Delete (Trash only) -->
+                                    <button v-if="todo.removed" class="action-btn delete" @click="hardDeleteTodo(todo)" :title="lang === 'zh' ? '永久删除' : 'Delete permanently'">
+                                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                            <polyline points="3 6 5 6 21 6"></polyline>
+                                            <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+                                            <line x1="10" y1="11" x2="10" y2="17"></line>
+                                            <line x1="14" y1="11" x2="14" y2="17"></line>
+                                        </svg>
+                                    </button>
+                                    
+                                    <!-- Lock Focus (Advanced Mode only) -->
+                                    <button v-if="!todo.removed && appMode === 'advanced'" class="action-btn focus-lock" :class="{ locked: focusedTodoId === todo.id }" @click="lockTodoFocus(todo)" :title="lang === 'zh' ? '锁定为专注目标' : 'Lock as focus target'">
+                                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                                            <circle cx="12" cy="12" r="10"></circle>
+                                            <circle cx="12" cy="12" r="6"></circle>
+                                            <circle cx="12" cy="12" r="2"></circle>
+                                        </svg>
+                                    </button>
+
+                                    <!-- Edit Inline (Active list only) -->
+                                    <button v-if="!todo.removed && (editedTodo === null || editedTodo.id !== todo.id)" class="action-btn" @click="startEditTodo(todo)" :title="lang === 'zh' ? '编辑待办' : 'Edit task'">
+                                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                                            <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
+                                            <path d="M18.5 2.5a2.121 2.121 0 1 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
+                                        </svg>
+                                    </button>
+                                    <!-- Delete to Bin (Active list only) -->
+                                    <button v-if="!todo.removed" class="action-btn delete" @click="removeTodo(todo)" :title="lang === 'zh' ? '移动到回收站' : 'Move to recycle bin'">
+                                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                                            <polyline points="3 6 5 6 21 6"></polyline>
+                                            <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+                                        </svg>
+                                    </button>
+                                </div>
+                            </li>
+                        </ul>
+
+                        <!-- Empty state placeholder -->
+                        <div class="empty-placeholder" v-else>
+                            <div class="empty-icon">📝</div>
+                            <div class="empty-text-title" v-if="intention === 'all'">{{ t('emptyTasksTitle') }}</div>
+                            <div class="empty-text-title" v-else-if="intention === 'ongoing'">{{ t('emptyOngoingTitle') }}</div>
+                            <div class="empty-text-title" v-else-if="intention === 'completed'">{{ t('emptyCompletedTitle') }}</div>
+                            <div class="empty-text-title" v-else-if="intention === 'removed'">{{ t('emptyTrashTitle') }}</div>
+                            
+                            <div class="empty-instructions" v-if="intention !== 'removed'">
+                                <template v-if="lang === 'zh'">
+                                    💡 快捷指南：<br/>
+                                    ✔️ 所有提交与编辑均支持 <strong>Enter</strong> 键保存提交<br/>
+                                    ✔️ 双击标语和待办卡片内容可直接进行<strong>编辑修改</strong><br/>
+                                    ✔️ 鼠标拖拽或手机端<strong>触控上下滑动</strong>即可轻松排序<br/>
+                                    ✔️ 所有的待办数据和配置均<strong>自动离线加密存储</strong>在浏览器本地
+                                </template>
+                                <template v-else>
+                                    💡 Quick Guide:<br/>
+                                    ✔️ All submissions and edits support <strong>Enter</strong> key to save<br/>
+                                    ✔️ Double-click slogans and task cards to <strong>edit directly</strong><br/>
+                                    ✔️ Drag with mouse or <strong>touch & slide</strong> on mobile to reorder easily<br/>
+                                    ✔️ All todo data and configurations are <strong>automatically saved offline</strong> in local storage
+                                </template>
+                            </div>
+                        </div>
+                    </template>
+
+                    <!-- Kanban Board View Wrapper (Phase 3, Advanced Mode only) -->
+                    <div class="kanban-board" v-if="appMode === 'advanced' && currentView === 'kanban'">
+                        
+                        <!-- Column 1: Todo -->
+                        <div 
+                            class="kanban-column" 
+                            @dragover.prevent 
+                            @dragenter="handleKanbanDragEnter('todo', $event)"
+                            @dragleave="handleKanbanDragLeave($event)"
+                            @drop="handleKanbanDrop('todo', $event)"
+                        >
+                            <div class="kanban-column-header">
+                                <span class="kanban-column-title">📥 {{ lang === 'zh' ? '待处理' : 'To Do' }}</span>
+                                <span class="kanban-column-count">{{ kanbanTodoTasks.length }}</span>
+                            </div>
+                            <div class="kanban-column-content" data-status="todo">
+                                <div 
+                                    v-for="(todo, index) in kanbanTodoTasks" 
+                                    :key="todo.id" 
+                                    class="kanban-card todo-item"
+                                    :class="{ 'priority-high': todo.priority === 'high', 'priority-low': todo.priority === 'low', completed: todo.completed }"
+                                    draggable="true"
+                                    @dragstart="handleKanbanDragStart(todo, $event)"
+                                    @dragend="handleKanbanDragEnd"
+                                    @touchstart="handleKanbanTouchStart(todo, $event)"
+                                    @touchmove="handleKanbanTouchMove($event)"
+                                    @touchend="handleKanbanTouchEnd('todo', $event)"
+                                    :data-id="todo.id"
+                                >
+                                    <!-- Checkbox -->
+                                    <div 
+                                        class="todo-check" 
+                                        :class="{ completed: todo.completed }" 
+                                        @click="toggleTodoComplete(todo, $event)"
+                                        v-if="!todo.removed"
+                                    >
+                                        <svg class="todo-check-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round" stroke-linejoin="round">
+                                            <polyline points="20 6 9 17 4 12"></polyline>
+                                        </svg>
+                                    </div>
+
+                                    <!-- Content block -->
+                                    <div class="todo-content-block" @dblclick="startEditTodo(todo)">
+                                        <div v-if="editedTodo === null || editedTodo.id !== todo.id">
+                                            <span class="todo-title" :class="{ completed: todo.completed }">
+                                                <!-- Priority Badge -->
+                                                <span 
+                                                    v-if="!todo.removed" 
+                                                    class="priority-badge" 
+                                                    :class="todo.priority || 'normal'" 
+                                                    @click.stop="cycleTodoPriority(todo)"
+                                                    style="margin-right: 6px; display: inline-flex; align-items: center; justify-content: center; font-size: 9px; font-weight: 800; padding: 2px 6px; border-radius: 4px; cursor: pointer; text-transform: uppercase; user-select: none;"
+                                                >
+                                                    {{ todo.priority === 'high' ? 'High' : (todo.priority === 'low' ? 'Low' : 'Norm') }}
+                                                </span>
+
+                                                {{ todo.title }}
+
+                                                <!-- Recurrence Badge -->
+                                                <span 
+                                                    v-if="todo.recurrence && todo.recurrence !== 'none' && !todo.removed" 
+                                                    class="recurrence-badge" 
+                                                    style="margin-left: 6px; display: inline-flex; align-items: center; gap: 3px; font-size: 9.5px; font-weight: 700; color: var(--text-secondary); background: rgba(var(--accent-rgb), 0.04); border: 1px solid var(--border-color); padding: 2px 6px; border-radius: 4px;"
+                                                >
+                                                    <span>🔁</span>
+                                                    <span>{{ todo.recurrence === 'daily' ? (lang === 'zh' ? '每日' : 'Daily') : (todo.recurrence === 'weekly' ? (lang === 'zh' ? '每周' : 'Weekly') : (lang === 'zh' ? '每月' : 'Monthly')) }}</span>
+                                                </span>
+                                            </span>
+                                        </div>
+                                        <div v-else>
+                                            <input 
+                                                type="text" 
+                                                class="edit-todo-input" 
+                                                v-model="todo.title" 
+                                                :id="'edit-input-kanban-' + todo.id"
+                                                @keyup.enter="finishEditTodo(todo)" 
+                                                @keyup.esc="cancelEditTodo(todo)" 
+                                                @blur="finishEditTodo(todo)"
+                                            />
+                                        </div>
+
+                                        <!-- Pill Tags -->
+                                        <div class="todo-tags" v-if="todo.tags && todo.tags.length > 0">
+                                            <span v-for="tag in todo.tags" :key="tag" class="tag-pill">
+                                                {{ tag }}
+                                            </span>
+                                        </div>
+
+                                        <!-- Subtask Checklist Section inside Kanban -->
+                                        <div class="subtask-section" v-if="!todo.removed" style="margin-top: 12px; padding-top: 12px; border-top: 1px dashed var(--border-color); display: flex; flex-direction: column; gap: 8px;">
+                                            <div class="subtask-progress-wrapper" v-if="todo.subtasks && todo.subtasks.length > 0" style="display: flex; align-items: center; gap: 8px; font-size: 11px; color: var(--text-secondary);">
+                                                <div style="flex-shrink: 0; font-weight: 700;">{{ lang === 'zh' ? '子步骤' : 'Subtasks' }}: {{ getSubtaskStats(todo).completed }}/{{ getSubtaskStats(todo).total }}</div>
+                                                <div style="flex: 1; height: 4px; background: var(--border-color); border-radius: 2px; overflow: hidden;">
+                                                    <div style="height: 100%; background: var(--accent); transition: width 0.3s ease;" :style="{ width: getSubtaskStats(todo).percentage + '%' }"></div>
+                                                </div>
+                                                <div style="flex-shrink: 0; font-weight: 700;">{{ getSubtaskStats(todo).percentage }}%</div>
+                                            </div>
+
+                                            <div class="subtask-list" v-if="todo.subtasks && todo.subtasks.length > 0" style="display: flex; flex-direction: column; gap: 6px; padding-left: 2px;">
+                                                <div v-for="sub in todo.subtasks" :key="sub.id" class="subtask-item" style="display: flex; align-items: center; justify-content: space-between; gap: 8px;">
+                                                    <div style="display: flex; align-items: center; gap: 8px; flex: 1;">
+                                                        <div 
+                                                            class="subtask-check" 
+                                                            style="width: 16px; height: 16px; border-radius: 4px; border: 1.5px solid var(--border-color); cursor: pointer; display: flex; align-items: center; justify-content: center; transition: all 0.2s; flex-shrink: 0;"
+                                                            :style="{ borderColor: sub.completed ? 'var(--color-success)' : 'var(--border-color)', background: sub.completed ? 'var(--color-success)' : 'transparent' }"
+                                                            @click.stop="toggleSubtask(todo, sub, $event)"
+                                                        >
+                                                            <svg v-if="sub.completed" width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="#ffffff" stroke-width="5" stroke-linecap="round" stroke-linejoin="round">
+                                                                <polyline points="20 6 9 17 4 12"></polyline>
+                                                            </svg>
+                                                        </div>
+                                                        <span style="font-size: 13px; color: var(--text-primary); transition: all 0.2s;" :style="{ textDecoration: sub.completed ? 'line-through' : 'none', opacity: sub.completed ? 0.5 : 1 }">
+                                                            {{ sub.title }}
+                                                        </span>
+                                                    </div>
+                                                    <button class="subtask-del-btn" style="background: transparent; border: none; padding: 2px; color: var(--text-secondary); cursor: pointer; display: flex; align-items: center; opacity: 0.5; transition: opacity 0.2s;" @click.stop="removeSubtask(todo, sub)" :title="lang === 'zh' ? '删除子步骤' : 'Delete subtask'">
+                                                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                                                            <line x1="18" y1="6" x2="6" y2="18"></line>
+                                                            <line x1="6" y1="6" x2="18" y2="18"></line>
+                                                        </svg>
+                                                    </button>
+                                                </div>
+                                            </div>
+
+                                            <div class="subtask-input-wrapper" style="display: flex; gap: 8px; margin-top: 4px;" @dragstart.stop.prevent @mousedown.stop>
+                                                <input 
+                                                    type="text" 
+                                                    :placeholder="lang === 'zh' ? '新增子步骤...' : 'Add subtask...'" 
+                                                    style="flex: 1; font-size: 12px; padding: 6px 10px; border: 1px solid var(--border-color); background: var(--bg-primary); color: var(--text-primary); border-radius: var(--radius-sm); outline: none; transition: border-color 0.2s;"
+                                                    v-model="newSubtaskTitles[todo.id]"
+                                                    @keyup.enter.stop="addSubtask(todo)"
+                                                />
+                                                <button type="button" style="font-size: 11px; padding: 4px 10px; background: var(--accent); color: var(--bg-secondary); border: none; border-radius: var(--radius-sm); cursor: pointer; font-weight: 600;" @click.stop="addSubtask(todo)">
+                                                    {{ lang === 'zh' ? '添加' : 'Add' }}
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <!-- Action Buttons -->
+                                    <div class="item-actions">
+                                        <!-- Lock Focus -->
+                                        <button v-if="!todo.removed" class="action-btn focus-lock" :class="{ locked: focusedTodoId === todo.id }" @click="lockTodoFocus(todo)" :title="lang === 'zh' ? '锁定为专注目标' : 'Lock as focus target'">
+                                            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                                                <circle cx="12" cy="12" r="10"></circle>
+                                                <circle cx="12" cy="12" r="6"></circle>
+                                                <circle cx="12" cy="12" r="2"></circle>
+                                            </svg>
+                                        </button>
+
+                                        <!-- Edit Inline -->
+                                        <button v-if="!todo.removed && (editedTodo === null || editedTodo.id !== todo.id)" class="action-btn" @click="startEditTodo(todo)" :title="lang === 'zh' ? '编辑待办' : 'Edit task'">
+                                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                                                <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
+                                                <path d="M18.5 2.5a2.121 2.121 0 1 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
+                                            </svg>
+                                        </button>
+
+                                        <!-- Delete to Bin -->
+                                        <button v-if="!todo.removed" class="action-btn delete" @click="removeTodo(todo)" :title="lang === 'zh' ? '移动到回收站' : 'Move to recycle bin'">
+                                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                                                <polyline points="3 6 5 6 21 6"></polyline>
+                                                <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+                                            </svg>
                                         </button>
                                     </div>
                                 </div>
+                                <div class="kanban-empty-tip" v-if="kanbanTodoTasks.length === 0">
+                                    {{ lang === 'zh' ? '🎉 没有待处理事项' : '🎉 No pending tasks' }}
+                                </div>
                             </div>
-
-                            <!-- Action Buttons -->
-                            <div class="item-actions">
-                                <!-- Restore (Trash only) -->
-                                <button v-if="todo.removed" class="action-btn restore" @click="restoreTodo(todo)" :title="lang === 'zh' ? '还原待办' : 'Restore task'">
-                                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                        <polyline points="23 4 23 10 17 10"></polyline>
-                                        <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"></path>
-                                    </svg>
-                                </button>
-                                <!-- Hard Delete (Trash only) -->
-                                <button v-if="todo.removed" class="action-btn delete" @click="hardDeleteTodo(todo)" :title="lang === 'zh' ? '永久删除' : 'Delete permanently'">
-                                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                        <polyline points="3 6 5 6 21 6"></polyline>
-                                        <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
-                                        <line x1="10" y1="11" x2="10" y2="17"></line>
-                                        <line x1="14" y1="11" x2="14" y2="17"></line>
-                                    </svg>
-                                </button>
-                                
-                                <!-- Lock Focus (Advanced Mode only) -->
-                                <button v-if="!todo.removed && appMode === 'advanced'" class="action-btn focus-lock" :class="{ locked: focusedTodoId === todo.id }" @click="lockTodoFocus(todo)" :title="lang === 'zh' ? '锁定为专注目标' : 'Lock as focus target'">
-                                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-                                        <circle cx="12" cy="12" r="10"></circle>
-                                        <circle cx="12" cy="12" r="6"></circle>
-                                        <circle cx="12" cy="12" r="2"></circle>
-                                    </svg>
-                                </button>
-
-                                <!-- Edit Inline (Active list only) -->
-                                <button v-if="!todo.removed && (editedTodo === null || editedTodo.id !== todo.id)" class="action-btn" @click="startEditTodo(todo)" :title="lang === 'zh' ? '编辑待办' : 'Edit task'">
-                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-                                        <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
-                                        <path d="M18.5 2.5a2.121 2.121 0 1 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
-                                    </svg>
-                                </button>
-                                <!-- Delete to Bin (Active list only) -->
-                                <button v-if="!todo.removed" class="action-btn delete" @click="removeTodo(todo)" :title="lang === 'zh' ? '移动到回收站' : 'Move to recycle bin'">
-                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-                                        <polyline points="3 6 5 6 21 6"></polyline>
-                                        <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
-                                    </svg>
-                                </button>
-                            </div>
-                        </li>
-                    </ul>
-
-                    <!-- Empty state placeholder -->
-                    <div class="empty-placeholder" v-else>
-                        <div class="empty-icon">📝</div>
-                        <div class="empty-text-title" v-if="intention === 'all'">{{ t('emptyTasksTitle') }}</div>
-                        <div class="empty-text-title" v-else-if="intention === 'ongoing'">{{ t('emptyOngoingTitle') }}</div>
-                        <div class="empty-text-title" v-else-if="intention === 'completed'">{{ t('emptyCompletedTitle') }}</div>
-                        <div class="empty-text-title" v-else-if="intention === 'removed'">{{ t('emptyTrashTitle') }}</div>
-                        
-                        <div class="empty-instructions" v-if="intention !== 'removed'">
-                            <template v-if="lang === 'zh'">
-                                💡 快捷指南：<br/>
-                                ✔️ 所有提交与编辑均支持 <strong>Enter</strong> 键保存提交<br/>
-                                ✔️ 双击标语和待办卡片内容可直接进行<strong>编辑修改</strong><br/>
-                                ✔️ 鼠标拖拽或手机端<strong>触控上下滑动</strong>即可轻松排序<br/>
-                                ✔️ 所有的待办数据和配置均<strong>自动离线加密存储</strong>在浏览器本地
-                            </template>
-                            <template v-else>
-                                💡 Quick Guide:<br/>
-                                ✔️ All submissions and edits support <strong>Enter</strong> key to save<br/>
-                                ✔️ Double-click slogans and task cards to <strong>edit directly</strong><br/>
-                                ✔️ Drag with mouse or <strong>touch & slide</strong> on mobile to reorder easily<br/>
-                                ✔️ All todo data and configurations are <strong>automatically saved offline</strong> in local storage
-                            </template>
                         </div>
+
+                        <!-- Column 2: In Progress -->
+                        <div 
+                            class="kanban-column" 
+                            @dragover.prevent 
+                            @dragenter="handleKanbanDragEnter('progress', $event)"
+                            @dragleave="handleKanbanDragLeave($event)"
+                            @drop="handleKanbanDrop('progress', $event)"
+                        >
+                            <div class="kanban-column-header">
+                                <span class="kanban-column-title">⚡ {{ lang === 'zh' ? '进行中' : 'In Progress' }}</span>
+                                <span class="kanban-column-count">{{ kanbanProgressTasks.length }}</span>
+                            </div>
+                            <div class="kanban-column-content" data-status="progress">
+                                <div 
+                                    v-for="(todo, index) in kanbanProgressTasks" 
+                                    :key="todo.id" 
+                                    class="kanban-card todo-item"
+                                    :class="{ 'priority-high': todo.priority === 'high', 'priority-low': todo.priority === 'low', completed: todo.completed }"
+                                    draggable="true"
+                                    @dragstart="handleKanbanDragStart(todo, $event)"
+                                    @dragend="handleKanbanDragEnd"
+                                    @touchstart="handleKanbanTouchStart(todo, $event)"
+                                    @touchmove="handleKanbanTouchMove($event)"
+                                    @touchend="handleKanbanTouchEnd('progress', $event)"
+                                    :data-id="todo.id"
+                                >
+                                    <!-- Checkbox -->
+                                    <div 
+                                        class="todo-check" 
+                                        :class="{ completed: todo.completed }" 
+                                        @click="toggleTodoComplete(todo, $event)"
+                                        v-if="!todo.removed"
+                                    >
+                                        <svg class="todo-check-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round" stroke-linejoin="round">
+                                            <polyline points="20 6 9 17 4 12"></polyline>
+                                        </svg>
+                                    </div>
+
+                                    <!-- Content block -->
+                                    <div class="todo-content-block" @dblclick="startEditTodo(todo)">
+                                        <div v-if="editedTodo === null || editedTodo.id !== todo.id">
+                                            <span class="todo-title" :class="{ completed: todo.completed }">
+                                                <!-- Priority Badge -->
+                                                <span 
+                                                    v-if="!todo.removed" 
+                                                    class="priority-badge" 
+                                                    :class="todo.priority || 'normal'" 
+                                                    @click.stop="cycleTodoPriority(todo)"
+                                                    style="margin-right: 6px; display: inline-flex; align-items: center; justify-content: center; font-size: 9px; font-weight: 800; padding: 2px 6px; border-radius: 4px; cursor: pointer; text-transform: uppercase; user-select: none;"
+                                                >
+                                                    {{ todo.priority === 'high' ? 'High' : (todo.priority === 'low' ? 'Low' : 'Norm') }}
+                                                </span>
+
+                                                {{ todo.title }}
+
+                                                <!-- Recurrence Badge -->
+                                                <span 
+                                                    v-if="todo.recurrence && todo.recurrence !== 'none' && !todo.removed" 
+                                                    class="recurrence-badge" 
+                                                    style="margin-left: 6px; display: inline-flex; align-items: center; gap: 3px; font-size: 9.5px; font-weight: 700; color: var(--text-secondary); background: rgba(var(--accent-rgb), 0.04); border: 1px solid var(--border-color); padding: 2px 6px; border-radius: 4px;"
+                                                >
+                                                    <span>🔁</span>
+                                                    <span>{{ todo.recurrence === 'daily' ? (lang === 'zh' ? '每日' : 'Daily') : (todo.recurrence === 'weekly' ? (lang === 'zh' ? '每周' : 'Weekly') : (lang === 'zh' ? '每月' : 'Monthly')) }}</span>
+                                                </span>
+                                            </span>
+                                        </div>
+                                        <div v-else>
+                                            <input 
+                                                type="text" 
+                                                class="edit-todo-input" 
+                                                v-model="todo.title" 
+                                                :id="'edit-input-kanban-' + todo.id"
+                                                @keyup.enter="finishEditTodo(todo)" 
+                                                @keyup.esc="cancelEditTodo(todo)" 
+                                                @blur="finishEditTodo(todo)"
+                                            />
+                                        </div>
+
+                                        <!-- Pill Tags -->
+                                        <div class="todo-tags" v-if="todo.tags && todo.tags.length > 0">
+                                            <span v-for="tag in todo.tags" :key="tag" class="tag-pill">
+                                                {{ tag }}
+                                            </span>
+                                        </div>
+
+                                        <!-- Subtask Checklist Section inside Kanban -->
+                                        <div class="subtask-section" v-if="!todo.removed" style="margin-top: 12px; padding-top: 12px; border-top: 1px dashed var(--border-color); display: flex; flex-direction: column; gap: 8px;">
+                                            <div class="subtask-progress-wrapper" v-if="todo.subtasks && todo.subtasks.length > 0" style="display: flex; align-items: center; gap: 8px; font-size: 11px; color: var(--text-secondary);">
+                                                <div style="flex-shrink: 0; font-weight: 700;">{{ lang === 'zh' ? '子步骤' : 'Subtasks' }}: {{ getSubtaskStats(todo).completed }}/{{ getSubtaskStats(todo).total }}</div>
+                                                <div style="flex: 1; height: 4px; background: var(--border-color); border-radius: 2px; overflow: hidden;">
+                                                    <div style="height: 100%; background: var(--accent); transition: width 0.3s ease;" :style="{ width: getSubtaskStats(todo).percentage + '%' }"></div>
+                                                </div>
+                                                <div style="flex-shrink: 0; font-weight: 700;">{{ getSubtaskStats(todo).percentage }}%</div>
+                                            </div>
+
+                                            <div class="subtask-list" v-if="todo.subtasks && todo.subtasks.length > 0" style="display: flex; flex-direction: column; gap: 6px; padding-left: 2px;">
+                                                <div v-for="sub in todo.subtasks" :key="sub.id" class="subtask-item" style="display: flex; align-items: center; justify-content: space-between; gap: 8px;">
+                                                    <div style="display: flex; align-items: center; gap: 8px; flex: 1;">
+                                                        <div 
+                                                            class="subtask-check" 
+                                                            style="width: 16px; height: 16px; border-radius: 4px; border: 1.5px solid var(--border-color); cursor: pointer; display: flex; align-items: center; justify-content: center; transition: all 0.2s; flex-shrink: 0;"
+                                                            :style="{ borderColor: sub.completed ? 'var(--color-success)' : 'var(--border-color)', background: sub.completed ? 'var(--color-success)' : 'transparent' }"
+                                                            @click.stop="toggleSubtask(todo, sub, $event)"
+                                                        >
+                                                            <svg v-if="sub.completed" width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="#ffffff" stroke-width="5" stroke-linecap="round" stroke-linejoin="round">
+                                                                <polyline points="20 6 9 17 4 12"></polyline>
+                                                            </svg>
+                                                        </div>
+                                                        <span style="font-size: 13px; color: var(--text-primary); transition: all 0.2s;" :style="{ textDecoration: sub.completed ? 'line-through' : 'none', opacity: sub.completed ? 0.5 : 1 }">
+                                                            {{ sub.title }}
+                                                        </span>
+                                                    </div>
+                                                    <button class="subtask-del-btn" style="background: transparent; border: none; padding: 2px; color: var(--text-secondary); cursor: pointer; display: flex; align-items: center; opacity: 0.5; transition: opacity 0.2s;" @click.stop="removeSubtask(todo, sub)" :title="lang === 'zh' ? '删除子步骤' : 'Delete subtask'">
+                                                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                                                            <line x1="18" y1="6" x2="6" y2="18"></line>
+                                                            <line x1="6" y1="6" x2="18" y2="18"></line>
+                                                        </svg>
+                                                    </button>
+                                                </div>
+                                            </div>
+
+                                            <div class="subtask-input-wrapper" style="display: flex; gap: 8px; margin-top: 4px;" @dragstart.stop.prevent @mousedown.stop>
+                                                <input 
+                                                    type="text" 
+                                                    :placeholder="lang === 'zh' ? '新增子步骤...' : 'Add subtask...'" 
+                                                    style="flex: 1; font-size: 12px; padding: 6px 10px; border: 1px solid var(--border-color); background: var(--bg-primary); color: var(--text-primary); border-radius: var(--radius-sm); outline: none; transition: border-color 0.2s;"
+                                                    v-model="newSubtaskTitles[todo.id]"
+                                                    @keyup.enter.stop="addSubtask(todo)"
+                                                />
+                                                <button type="button" style="font-size: 11px; padding: 4px 10px; background: var(--accent); color: var(--bg-secondary); border: none; border-radius: var(--radius-sm); cursor: pointer; font-weight: 600;" @click.stop="addSubtask(todo)">
+                                                    {{ lang === 'zh' ? '添加' : 'Add' }}
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <!-- Action Buttons -->
+                                    <div class="item-actions">
+                                        <!-- Lock Focus -->
+                                        <button v-if="!todo.removed" class="action-btn focus-lock" :class="{ locked: focusedTodoId === todo.id }" @click="lockTodoFocus(todo)" :title="lang === 'zh' ? '锁定为专注目标' : 'Lock as focus target'">
+                                            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                                                <circle cx="12" cy="12" r="10"></circle>
+                                                <circle cx="12" cy="12" r="6"></circle>
+                                                <circle cx="12" cy="12" r="2"></circle>
+                                            </svg>
+                                        </button>
+
+                                        <!-- Edit Inline -->
+                                        <button v-if="!todo.removed && (editedTodo === null || editedTodo.id !== todo.id)" class="action-btn" @click="startEditTodo(todo)" :title="lang === 'zh' ? '编辑待办' : 'Edit task'">
+                                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                                                <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
+                                                <path d="M18.5 2.5a2.121 2.121 0 1 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
+                                            </svg>
+                                        </button>
+
+                                        <!-- Delete to Bin -->
+                                        <button v-if="!todo.removed" class="action-btn delete" @click="removeTodo(todo)" :title="lang === 'zh' ? '移动到回收站' : 'Move to recycle bin'">
+                                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                                                <polyline points="3 6 5 6 21 6"></polyline>
+                                                <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+                                            </svg>
+                                        </button>
+                                    </div>
+                                </div>
+                                <div class="kanban-empty-tip" v-if="kanbanProgressTasks.length === 0">
+                                    {{ lang === 'zh' ? '☕ 开启一项专注任务吧' : '☕ Start a focus task' }}
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Column 3: Done -->
+                        <div 
+                            class="kanban-column" 
+                            @dragover.prevent 
+                            @dragenter="handleKanbanDragEnter('done', $event)"
+                            @dragleave="handleKanbanDragLeave($event)"
+                            @drop="handleKanbanDrop('done', $event)"
+                        >
+                            <div class="kanban-column-header">
+                                <span class="kanban-column-title">✅ {{ lang === 'zh' ? '已完成' : 'Done' }}</span>
+                                <span class="kanban-column-count">{{ kanbanDoneTasks.length }}</span>
+                            </div>
+                            <div class="kanban-column-content" data-status="done">
+                                <div 
+                                    v-for="(todo, index) in kanbanDoneTasks" 
+                                    :key="todo.id" 
+                                    class="kanban-card todo-item completed"
+                                    :class="{ 'priority-high': todo.priority === 'high', 'priority-low': todo.priority === 'low', completed: todo.completed }"
+                                    draggable="true"
+                                    @dragstart="handleKanbanDragStart(todo, $event)"
+                                    @dragend="handleKanbanDragEnd"
+                                    @touchstart="handleKanbanTouchStart(todo, $event)"
+                                    @touchmove="handleKanbanTouchMove($event)"
+                                    @touchend="handleKanbanTouchEnd('done', $event)"
+                                    :data-id="todo.id"
+                                >
+                                    <!-- Checkbox -->
+                                    <div 
+                                        class="todo-check" 
+                                        :class="{ completed: todo.completed }" 
+                                        @click="toggleTodoComplete(todo, $event)"
+                                        v-if="!todo.removed"
+                                    >
+                                        <svg class="todo-check-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round" stroke-linejoin="round">
+                                            <polyline points="20 6 9 17 4 12"></polyline>
+                                        </svg>
+                                    </div>
+
+                                    <!-- Content block -->
+                                    <div class="todo-content-block" @dblclick="startEditTodo(todo)">
+                                        <div v-if="editedTodo === null || editedTodo.id !== todo.id">
+                                            <span class="todo-title" :class="{ completed: todo.completed }">
+                                                <!-- Priority Badge -->
+                                                <span 
+                                                    v-if="!todo.removed" 
+                                                    class="priority-badge" 
+                                                    :class="todo.priority || 'normal'" 
+                                                    @click.stop="cycleTodoPriority(todo)"
+                                                    style="margin-right: 6px; display: inline-flex; align-items: center; justify-content: center; font-size: 9px; font-weight: 800; padding: 2px 6px; border-radius: 4px; cursor: pointer; text-transform: uppercase; user-select: none;"
+                                                >
+                                                    {{ todo.priority === 'high' ? 'High' : (todo.priority === 'low' ? 'Low' : 'Norm') }}
+                                                </span>
+
+                                                {{ todo.title }}
+
+                                                <!-- Recurrence Badge -->
+                                                <span 
+                                                    v-if="todo.recurrence && todo.recurrence !== 'none' && !todo.removed" 
+                                                    class="recurrence-badge" 
+                                                    style="margin-left: 6px; display: inline-flex; align-items: center; gap: 3px; font-size: 9.5px; font-weight: 700; color: var(--text-secondary); background: rgba(var(--accent-rgb), 0.04); border: 1px solid var(--border-color); padding: 2px 6px; border-radius: 4px;"
+                                                >
+                                                    <span>🔁</span>
+                                                    <span>{{ todo.recurrence === 'daily' ? (lang === 'zh' ? '每日' : 'Daily') : (todo.recurrence === 'weekly' ? (lang === 'zh' ? '每周' : 'Weekly') : (lang === 'zh' ? '每月' : 'Monthly')) }}</span>
+                                                </span>
+                                            </span>
+                                        </div>
+                                        <div v-else>
+                                            <input 
+                                                type="text" 
+                                                class="edit-todo-input" 
+                                                v-model="todo.title" 
+                                                :id="'edit-input-kanban-' + todo.id"
+                                                @keyup.enter="finishEditTodo(todo)" 
+                                                @keyup.esc="cancelEditTodo(todo)" 
+                                                @blur="finishEditTodo(todo)"
+                                            />
+                                        </div>
+
+                                        <!-- Pill Tags -->
+                                        <div class="todo-tags" v-if="todo.tags && todo.tags.length > 0">
+                                            <span v-for="tag in todo.tags" :key="tag" class="tag-pill">
+                                                {{ tag }}
+                                            </span>
+                                        </div>
+
+                                        <!-- Subtask Checklist Section inside Kanban -->
+                                        <div class="subtask-section" v-if="!todo.removed" style="margin-top: 12px; padding-top: 12px; border-top: 1px dashed var(--border-color); display: flex; flex-direction: column; gap: 8px;">
+                                            <div class="subtask-progress-wrapper" v-if="todo.subtasks && todo.subtasks.length > 0" style="display: flex; align-items: center; gap: 8px; font-size: 11px; color: var(--text-secondary);">
+                                                <div style="flex-shrink: 0; font-weight: 700;">{{ lang === 'zh' ? '子步骤' : 'Subtasks' }}: {{ getSubtaskStats(todo).completed }}/{{ getSubtaskStats(todo).total }}</div>
+                                                <div style="flex: 1; height: 4px; background: var(--border-color); border-radius: 2px; overflow: hidden;">
+                                                    <div style="height: 100%; background: var(--accent); transition: width 0.3s ease;" :style="{ width: getSubtaskStats(todo).percentage + '%' }"></div>
+                                                </div>
+                                                <div style="flex-shrink: 0; font-weight: 700;">{{ getSubtaskStats(todo).percentage }}%</div>
+                                            </div>
+
+                                            <div class="subtask-list" v-if="todo.subtasks && todo.subtasks.length > 0" style="display: flex; flex-direction: column; gap: 6px; padding-left: 2px;">
+                                                <div v-for="sub in todo.subtasks" :key="sub.id" class="subtask-item" style="display: flex; align-items: center; justify-content: space-between; gap: 8px;">
+                                                    <div style="display: flex; align-items: center; gap: 8px; flex: 1;">
+                                                        <div 
+                                                            class="subtask-check" 
+                                                            style="width: 16px; height: 16px; border-radius: 4px; border: 1.5px solid var(--border-color); cursor: pointer; display: flex; align-items: center; justify-content: center; transition: all 0.2s; flex-shrink: 0;"
+                                                            :style="{ borderColor: sub.completed ? 'var(--color-success)' : 'var(--border-color)', background: sub.completed ? 'var(--color-success)' : 'transparent' }"
+                                                            @click.stop="toggleSubtask(todo, sub, $event)"
+                                                        >
+                                                            <svg v-if="sub.completed" width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="#ffffff" stroke-width="5" stroke-linecap="round" stroke-linejoin="round">
+                                                                <polyline points="20 6 9 17 4 12"></polyline>
+                                                            </svg>
+                                                        </div>
+                                                        <span style="font-size: 13px; color: var(--text-primary); transition: all 0.2s;" :style="{ textDecoration: sub.completed ? 'line-through' : 'none', opacity: sub.completed ? 0.5 : 1 }">
+                                                            {{ sub.title }}
+                                                        </span>
+                                                    </div>
+                                                    <button class="subtask-del-btn" style="background: transparent; border: none; padding: 2px; color: var(--text-secondary); cursor: pointer; display: flex; align-items: center; opacity: 0.5; transition: opacity 0.2s;" @click.stop="removeSubtask(todo, sub)" :title="lang === 'zh' ? '删除子步骤' : 'Delete subtask'">
+                                                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                                                            <line x1="18" y1="6" x2="6" y2="18"></line>
+                                                            <line x1="6" y1="6" x2="18" y2="18"></line>
+                                                        </svg>
+                                                    </button>
+                                                </div>
+                                            </div>
+
+                                            <div class="subtask-input-wrapper" style="display: flex; gap: 8px; margin-top: 4px;" @dragstart.stop.prevent @mousedown.stop>
+                                                <input 
+                                                    type="text" 
+                                                    :placeholder="lang === 'zh' ? '新增子步骤...' : 'Add subtask...'" 
+                                                    style="flex: 1; font-size: 12px; padding: 6px 10px; border: 1px solid var(--border-color); background: var(--bg-primary); color: var(--text-primary); border-radius: var(--radius-sm); outline: none; transition: border-color 0.2s;"
+                                                    v-model="newSubtaskTitles[todo.id]"
+                                                    @keyup.enter.stop="addSubtask(todo)"
+                                                />
+                                                <button type="button" style="font-size: 11px; padding: 4px 10px; background: var(--accent); color: var(--bg-secondary); border: none; border-radius: var(--radius-sm); cursor: pointer; font-weight: 600;" @click.stop="addSubtask(todo)">
+                                                    {{ lang === 'zh' ? '添加' : 'Add' }}
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <!-- Action Buttons -->
+                                    <div class="item-actions">
+                                        <!-- Lock Focus -->
+                                        <button v-if="!todo.removed" class="action-btn focus-lock" :class="{ locked: focusedTodoId === todo.id }" @click="lockTodoFocus(todo)" :title="lang === 'zh' ? '锁定为专注目标' : 'Lock as focus target'">
+                                            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                                                <circle cx="12" cy="12" r="10"></circle>
+                                                <circle cx="12" cy="12" r="6"></circle>
+                                                <circle cx="12" cy="12" r="2"></circle>
+                                            </svg>
+                                        </button>
+
+                                        <!-- Edit Inline -->
+                                        <button v-if="!todo.removed && (editedTodo === null || editedTodo.id !== todo.id)" class="action-btn" @click="startEditTodo(todo)" :title="lang === 'zh' ? '编辑待办' : 'Edit task'">
+                                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                                                <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
+                                                <path d="M18.5 2.5a2.121 2.121 0 1 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
+                                            </svg>
+                                        </button>
+
+                                        <!-- Delete to Bin -->
+                                        <button v-if="!todo.removed" class="action-btn delete" @click="removeTodo(todo)" :title="lang === 'zh' ? '移动到回收站' : 'Move to recycle bin'">
+                                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                                                <polyline points="3 6 5 6 21 6"></polyline>
+                                                <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+                                            </svg>
+                                        </button>
+                                    </div>
+                                </div>
+                                <div class="kanban-empty-tip" v-if="kanbanDoneTasks.length === 0">
+                                    {{ lang === 'zh' ? '👏 暂无已完成的事项' : '👏 No completed tasks' }}
+                                </div>
+                            </div>
+                        </div>
+
                     </div>
                 </main>
 
