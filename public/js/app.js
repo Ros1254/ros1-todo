@@ -1249,6 +1249,15 @@ const app = createApp({
       isAddingCustomTag.value = false;
     };
 
+    const toggleClockWidget = () => {
+      SoundEffects.playClick();
+      if (appMode.value !== 'advanced') {
+        appMode.value = 'advanced';
+        saveAppMode();
+      }
+      isPomodoroVisible.value = !isPomodoroVisible.value;
+    };
+
     // Filtering by tag click
     const toggleFilterTag = (tag) => {
       SoundEffects.playClick();
@@ -2651,6 +2660,7 @@ const app = createApp({
       customTagInput,
       customTagInputRef,
       isPomodoroVisible,
+      toggleClockWidget,
       startAddingCustomTag,
       submitCustomTag,
       toggleFilterTag,

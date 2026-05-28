@@ -101,6 +101,20 @@
                     <!-- Task Input Card -->
                     <div class="add-todo-container">
                         <div class="add-content-wrapper">
+                            <!-- ⏱️ Quick Clock Toggle Button (Collapsible switch mapped to sidebar Pomodoro widget) -->
+                            <button 
+                                type="button" 
+                                class="quick-clock-btn" 
+                                :class="{ active: isPomodoroVisible && appMode === 'advanced' }"
+                                @click="toggleClockWidget"
+                                :title="lang === 'zh' ? '召唤/收起心流番茄钟' : 'Toggle Flow Pomodoro'"
+                            >
+                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="clock-icon-svg">
+                                    <circle cx="12" cy="12" r="10"></circle>
+                                    <polyline points="12 6 12 12 16 14"></polyline>
+                                </svg>
+                            </button>
+
                             <input 
                                 type="text" 
                                 class="add-content" 
