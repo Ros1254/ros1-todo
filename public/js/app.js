@@ -63,6 +63,39 @@ const SoundEffects = {
     playNote(523.25, now, 0.12);        // C5
     playNote(659.25, now + 0.08, 0.12); // E5
     playNote(783.99, now + 0.16, 0.22); // G5
+  },
+
+  playLevelUp() {
+    this.init();
+    if (!this.ctx || this.ctx.state === 'suspended') this.ctx.resume();
+    
+    const now = this.ctx.currentTime;
+    
+    const playNote = (freq, startTime, duration) => {
+      const osc = this.ctx.createOscillator();
+      const gain = this.ctx.createGain();
+      
+      osc.connect(gain);
+      gain.connect(this.ctx.destination);
+      
+      osc.type = 'triangle';
+      osc.frequency.setValueAtTime(freq, startTime);
+      
+      gain.gain.setValueAtTime(0.05, startTime);
+      gain.gain.exponentialRampToValueAtTime(0.0001, startTime + duration);
+      
+      osc.start(startTime);
+      osc.stop(startTime + duration);
+    };
+    
+    // Ascending majestic major chord run
+    playNote(261.63, now, 0.18);        // C4
+    playNote(329.63, now + 0.06, 0.18); // E4
+    playNote(392.00, now + 0.12, 0.18); // G4
+    playNote(523.25, now + 0.18, 0.18); // C5
+    playNote(659.25, now + 0.24, 0.18); // E5
+    playNote(783.99, now + 0.30, 0.18); // G5
+    playNote(1046.50, now + 0.36, 0.35); // C6
   }
 };
 
@@ -299,6 +332,28 @@ const ParticleSystem = {
     }
   },
 
+  spawnLevelUp(x, y) {
+    const colors = ['#ffd700', '#ffdf00', '#00f2fe', '#00ffcc', '#ffffff', '#fae06d'];
+    for (let i = 0; i < 60; i++) {
+      const angle = Math.random() * Math.PI * 2;
+      const speed = Math.random() * 10 + 4;
+      this.particles.push({
+        x: x,
+        y: y,
+        vx: Math.cos(angle) * speed,
+        vy: Math.sin(angle) * speed - 3, // Stronger upward bias
+        radius: Math.random() * 6 + 3,
+        color: colors[Math.floor(Math.random() * colors.length)],
+        alpha: 1,
+        decay: Math.random() * 0.015 + 0.01, // Slower decay for epic feeling
+        gravity: 0.18
+      });
+    }
+    if (!this.animationId) {
+      this.loop();
+    }
+  },
+
   loop() {
     if (this.particles.length === 0) {
       this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
@@ -431,8 +486,64 @@ const STORAGE_KEYS = {
   longBreakDuration: 'ros1-todo-lbreak-dur',
   notification: 'ros1-todo-notification-toggle',
   lastCheck: 'ros1-todo-last-check-date',
-  currentView: 'ros1-todo-current-view'
+  currentView: 'ros1-todo-current-view',
+  // 📈 PHASE 5: GAMIFICATION & STATS STORAGE KEYS
+  xp: 'ros1-todo-xp',
+  level: 'ros1-todo-level',
+  totalXp: 'ros1-todo-total-xp',
+  focusStreak: 'ros1-todo-focus-streak',
+  totalFocusedMinutes: 'ros1-todo-total-focused-minutes',
+  completedHistory: 'ros1-todo-completed-history',
+  unlockedAchievements: 'ros1-todo-unlocked-achievements'
 };
+
+const PRESET_ACHIEVEMENTS = [
+  {
+    id: 'first_step',
+    icon: '🎓',
+    titleZh: '初露锋芒',
+    titleEn: 'First Step',
+    descZh: '勾选完成第 1 个待办任务',
+    descEn: 'Complete your first task',
+    condition: (stats) => stats.completedCount >= 1
+  },
+  {
+    id: 'efficiency_master',
+    icon: '⚡',
+    titleZh: '效率达人',
+    titleEn: 'Efficiency Master',
+    descZh: '累计完成 10 个待办任务',
+    descEn: 'Complete 10 tasks in total',
+    condition: (stats) => stats.completedCount >= 10
+  },
+  {
+    id: 'focus_pioneer',
+    icon: '🎯',
+    titleZh: '专注先锋',
+    titleEn: 'Focus Pioneer',
+    descZh: '累计专注成功 3 个番茄钟',
+    descEn: 'Focus successfully for 3 Pomodoro sessions',
+    condition: (stats) => stats.pomodoroCount >= 3
+  },
+  {
+    id: 'flow_warrior',
+    icon: '🔥',
+    titleZh: '心流武士',
+    titleEn: 'Flow Warrior',
+    descZh: '角色等级达到 Level 5',
+    descEn: 'Reach Level 5',
+    condition: (stats) => stats.level >= 5
+  },
+  {
+    id: 'unstoppable',
+    icon: '🗓️',
+    titleZh: '坚持不懈',
+    titleEn: 'Unstoppable',
+    descZh: '连续 3 天都有完成任务',
+    descEn: 'Have completed tasks for 3 consecutive days',
+    condition: (stats) => stats.streak >= 3
+  }
+];
 
 // HELPER UTILITY FOR Multimodal Audio base64 conversions
 const fileToBase64 = (file) => {
@@ -520,6 +631,15 @@ const app = createApp({
     const draggedTodo = ref(null);
     const activeDragOverColumn = ref(null);
 
+    // 📈 Gamification & Analytics States (Phase 5)
+    const xp = ref(0);
+    const level = ref(1);
+    const totalXp = ref(0);
+    const focusStreak = ref(0);
+    const totalFocusedMinutes = ref(0);
+    const completedHistory = ref([]);
+    const unlockedAchievements = ref([]);
+
     // Fetch local storage initial state
     const fetchStorage = () => {
       try {
@@ -547,6 +667,27 @@ const app = createApp({
 
         // Load Kanban view preferences (Phase 3)
         currentView.value = localStorage.getItem(STORAGE_KEYS.currentView) || 'list';
+
+        // Load Gamification XP & levels (Phase 5)
+        xp.value = Number(localStorage.getItem(STORAGE_KEYS.xp)) || 0;
+        level.value = Number(localStorage.getItem(STORAGE_KEYS.level)) || 1;
+        totalXp.value = Number(localStorage.getItem(STORAGE_KEYS.totalXp)) || 0;
+        focusStreak.value = Number(localStorage.getItem(STORAGE_KEYS.focusStreak)) || 0;
+        totalFocusedMinutes.value = Number(localStorage.getItem(STORAGE_KEYS.totalFocusedMinutes)) || 0;
+        
+        try {
+          unlockedAchievements.value = JSON.parse(localStorage.getItem(STORAGE_KEYS.unlockedAchievements) || '[]');
+        } catch (e) {
+          unlockedAchievements.value = [];
+        }
+        
+        try {
+          completedHistory.value = JSON.parse(localStorage.getItem(STORAGE_KEYS.completedHistory) || '[]');
+        } catch (e) {
+          completedHistory.value = [];
+        }
+        
+        hydrateCompletedHistoryPlaceholders();
 
         // Sync HTML data attribute with theme
         document.documentElement.setAttribute('data-theme', theme.value);
@@ -1079,6 +1220,16 @@ const app = createApp({
       todo.completed = !todo.completed;
       if (todo.completed) {
         SoundEffects.playSuccess();
+        
+        // Gamification XP Add (Phase 5)
+        let xpReward = 50;
+        if (todo.priority === 'high') xpReward = 100;
+        else if (todo.priority === 'low') xpReward = 25;
+        addXp(xpReward, event);
+        
+        // Log to history
+        incrementCompletedToday();
+
         // Spawn sparks on click target coordinates
         if (event && event.clientX) {
           ParticleSystem.spawn(event.clientX, event.clientY);
@@ -1185,6 +1336,10 @@ const app = createApp({
       subtask.completed = !subtask.completed;
       if (subtask.completed) {
         SoundEffects.playSuccess();
+        
+        // Gamification XP Add (Phase 5)
+        addXp(10, event);
+
         if (event && event.clientX) {
           ParticleSystem.spawn(event.clientX, event.clientY, 12);
         } else {
@@ -1473,8 +1628,21 @@ const app = createApp({
           if (todo.subtasks && todo.subtasks.length > 0) {
             todo.subtasks.forEach(s => s.completed = true);
           }
+          
+          // Gamification XP Add (Phase 5)
+          let xpReward = 50;
+          if (todo.priority === 'high') xpReward = 100;
+          else if (todo.priority === 'low') xpReward = 25;
+          addXp(xpReward);
+          
+          // Log to history
+          incrementCompletedToday();
+
           SoundEffects.playSuccess();
-          createFirework();
+          // Fix legacy bug: replace createFirework() with ParticleSystem.spawn
+          if (typeof ParticleSystem !== 'undefined' && ParticleSystem.spawn) {
+            ParticleSystem.spawn(window.innerWidth / 2, window.innerHeight / 3, 50);
+          }
         }
       } else {
         if (todo.completed) {
@@ -1686,6 +1854,19 @@ const app = createApp({
       }
 
       if (timerMode.value === 'focus') {
+        // Gamification XP Add (Phase 5)
+        addXp(150);
+        
+        // Accumulate focus minutes
+        const mins = Math.round(focusDuration.value / 60);
+        totalFocusedMinutes.value += mins;
+        localStorage.setItem(STORAGE_KEYS.totalFocusedMinutes, totalFocusedMinutes.value.toString());
+        
+        // Track completed Pomodoros in localStorage
+        let poms = Number(localStorage.getItem('ros1-todo-completed-poms-count') || '0');
+        poms += 1;
+        localStorage.setItem('ros1-todo-completed-poms-count', poms.toString());
+
         // Send Notification (Phase 4)
         sendDesktopNotification(
           lang.value === 'zh' ? '🎯 专注完成！' : '🎯 Focus Complete!',
@@ -1982,6 +2163,334 @@ const app = createApp({
       saveTodos();
     };
 
+    // ==========================================
+    // 📈 GAMIFICATION & DATA ANALYTICS (Phase 5)
+    // ==========================================
+    const xpToNextLevel = computed(() => {
+      return 100 + (level.value - 1) * 50;
+    });
+
+    const addXp = (amount, event) => {
+      if (appMode.value !== 'advanced') return;
+      
+      xp.value += amount;
+      totalXp.value += amount;
+      
+      let leveledUp = false;
+      while (xp.value >= xpToNextLevel.value) {
+        xp.value -= xpToNextLevel.value;
+        level.value += 1;
+        leveledUp = true;
+      }
+      
+      localStorage.setItem(STORAGE_KEYS.xp, xp.value.toString());
+      localStorage.setItem(STORAGE_KEYS.level, level.value.toString());
+      localStorage.setItem(STORAGE_KEYS.totalXp, totalXp.value.toString());
+      
+      if (leveledUp) {
+        triggerLevelUpEffects(event);
+      } else {
+        spawnXpToast(amount, event);
+      }
+      
+      checkAchievements();
+    };
+
+    const triggerLevelUpEffects = (event) => {
+      SoundEffects.playLevelUp();
+      
+      let x = window.innerWidth / 2;
+      let y = window.innerHeight / 2;
+      if (event && event.clientX) {
+        x = event.clientX;
+        y = event.clientY;
+      }
+      
+      if (typeof ParticleSystem !== 'undefined' && ParticleSystem.spawnLevelUp) {
+        ParticleSystem.spawnLevelUp(x, y);
+        setTimeout(() => ParticleSystem.spawnLevelUp(x - 200, y - 100), 150);
+        setTimeout(() => ParticleSystem.spawnLevelUp(x + 200, y - 100), 300);
+      }
+      
+      showLevelUpNotification(level.value);
+    };
+
+    const showLevelUpNotification = (lvl) => {
+      try {
+        const toast = document.createElement('div');
+        toast.className = 'levelup-toast';
+        toast.innerHTML = `
+          <div class="lvl-toast-content">
+            <span class="lvl-toast-title">🎉 ${lang.value === 'zh' ? '恭喜升级！' : 'LEVEL UP!'} 🎉</span>
+            <span class="lvl-toast-desc">${lang.value === 'zh' ? '您的效能段位提升至' : 'Your efficiency tier rises to'}</span>
+            <span class="lvl-toast-badge">Lv. ${lvl}</span>
+          </div>
+        `;
+        document.body.appendChild(toast);
+        setTimeout(() => {
+          toast.classList.add('fade-out');
+          setTimeout(() => {
+            if (toast && toast.parentNode) {
+              toast.parentNode.removeChild(toast);
+            }
+          }, 500);
+        }, 3500);
+      } catch (e) {
+        console.error('Level up toast spawn failed:', e);
+      }
+    };
+
+    const spawnXpToast = (amount, event) => {
+      try {
+        const toast = document.createElement('div');
+        toast.className = 'xp-toast';
+        toast.innerText = `+${amount} XP`;
+        
+        let x = window.innerWidth / 2;
+        let y = window.innerHeight * 0.8;
+        if (event && event.clientX) {
+          x = event.clientX;
+          y = event.clientY;
+        }
+        
+        toast.style.left = `${x}px`;
+        toast.style.top = `${y}px`;
+        
+        document.body.appendChild(toast);
+        setTimeout(() => {
+          if (toast && toast.parentNode) {
+            toast.parentNode.removeChild(toast);
+          }
+        }, 800);
+      } catch (e) {
+        console.error('Xp toast spawn failed:', e);
+      }
+    };
+
+    const getTodayString = () => {
+      const d = new Date();
+      return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+    };
+
+    const incrementCompletedToday = () => {
+      if (appMode.value !== 'advanced') return;
+      try {
+        const todayStr = getTodayString();
+        let history = [];
+        try {
+          history = JSON.parse(localStorage.getItem(STORAGE_KEYS.completedHistory) || '[]');
+        } catch (e) {
+          history = [];
+        }
+        
+        let found = false;
+        for (let i = 0; i < history.length; i++) {
+          if (history[i].date === todayStr) {
+            history[i].count += 1;
+            found = true;
+            break;
+          }
+        }
+        
+        if (!found) {
+          history.push({ date: todayStr, count: 1 });
+        }
+        
+        history.sort((a, b) => new Date(a.date) - new Date(b.date));
+        if (history.length > 7) {
+          history = history.slice(history.length - 7);
+        }
+        
+        completedHistory.value = history;
+        localStorage.setItem(STORAGE_KEYS.completedHistory, JSON.stringify(history));
+        
+        updateStreakDays();
+      } catch (e) {
+        console.error('Failed to log completed history:', e);
+      }
+    };
+
+    const updateStreakDays = () => {
+      try {
+        let history = [];
+        try {
+          history = JSON.parse(localStorage.getItem(STORAGE_KEYS.completedHistory) || '[]');
+        } catch (e) {
+          history = [];
+        }
+        if (history.length === 0) {
+          focusStreak.value = 0;
+          return;
+        }
+        
+        history.sort((a, b) => new Date(b.date) - new Date(a.date));
+        
+        const todayStr = getTodayString();
+        const yesterday = new Date();
+        yesterday.setDate(yesterday.getDate() - 1);
+        const yesterdayStr = `${yesterday.getFullYear()}-${String(yesterday.getMonth() + 1).padStart(2, '0')}-${String(yesterday.getDate()).padStart(2, '0')}`;
+        
+        let streak = 0;
+        let lastDate = new Date();
+        
+        if (history[0].date === todayStr) {
+          streak = 1;
+          lastDate = new Date(todayStr);
+        } else if (history[0].date === yesterdayStr) {
+          streak = 1;
+          lastDate = new Date(yesterdayStr);
+        } else {
+          focusStreak.value = 0;
+          localStorage.setItem(STORAGE_KEYS.focusStreak, '0');
+          return;
+        }
+        
+        for (let i = 1; i < history.length; i++) {
+          const nextDate = new Date(history[i].date);
+          const diffTime = Math.abs(lastDate - nextDate);
+          const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+          
+          if (diffDays === 1) {
+            streak += 1;
+            lastDate = nextDate;
+          } else if (diffDays === 0) {
+            continue;
+          } else {
+            break;
+          }
+        }
+        
+        focusStreak.value = streak;
+        localStorage.setItem(STORAGE_KEYS.focusStreak, streak.toString());
+      } catch (e) {
+        console.error('Failed to update streak:', e);
+      }
+    };
+
+    const hydrateCompletedHistoryPlaceholders = () => {
+      try {
+        let history = completedHistory.value;
+        const result = [];
+        for (let i = 6; i >= 0; i--) {
+          const d = new Date();
+          d.setDate(d.getDate() - i);
+          const dateStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+          
+          const existing = history.find(h => h.date === dateStr);
+          result.push({
+            date: dateStr,
+            count: existing ? existing.count : 0
+          });
+        }
+        completedHistory.value = result;
+        localStorage.setItem(STORAGE_KEYS.completedHistory, JSON.stringify(result));
+      } catch (e) {
+        console.error('History hydration failed:', e);
+      }
+    };
+
+    const checkAchievements = () => {
+      if (appMode.value !== 'advanced') return;
+      try {
+        const completedCount = todos.value.filter(t => t.completed && !t.removed).length 
+                              + recycleBin.value.filter(t => t.completed).length;
+        const pomodoroCount = Number(localStorage.getItem('ros1-todo-completed-poms-count') || '0');
+        const currentLvl = level.value;
+        const currentStreak = focusStreak.value;
+        
+        const stats = {
+          completedCount,
+          pomodoroCount,
+          level: currentLvl,
+          streak: currentStreak
+        };
+        
+        PRESET_ACHIEVEMENTS.forEach(ach => {
+          if (unlockedAchievements.value.includes(ach.id)) return;
+          
+          if (ach.condition(stats)) {
+            unlockedAchievements.value.push(ach.id);
+            localStorage.setItem(STORAGE_KEYS.unlockedAchievements, JSON.stringify(unlockedAchievements.value));
+            triggerAchievementUnlock(ach);
+          }
+        });
+      } catch (e) {
+        console.error('Failed to check achievements:', e);
+      }
+    };
+
+    const triggerAchievementUnlock = (ach) => {
+      SoundEffects.playSuccess();
+      
+      const title = lang.value === 'zh' 
+        ? `🏆 成就解锁：【${ach.titleZh}】！` 
+        : `🏆 Achievement Unlocked: [${ach.titleEn}]!`;
+      const body = lang.value === 'zh'
+        ? `恭喜解锁新成就：${ach.descZh}！`
+        : `Congratulations on unlocking: ${ach.descEn}!`;
+      sendDesktopNotification(title, body);
+      
+      showAchievementToast(ach);
+    };
+
+    const showAchievementToast = (ach) => {
+      try {
+        const toast = document.createElement('div');
+        toast.className = 'achievement-toast';
+        toast.innerHTML = `
+          <div class="ach-toast-icon">${ach.icon}</div>
+          <div class="ach-toast-details">
+            <span class="ach-toast-tag">${lang.value === 'zh' ? '🏆 新成就解锁！' : '🏆 ACHIEVEMENT UNLOCKED!'}</span>
+            <span class="ach-toast-title">${lang.value === 'zh' ? ach.titleZh : ach.titleEn}</span>
+            <span class="ach-toast-desc">${lang.value === 'zh' ? ach.descZh : ach.descEn}</span>
+          </div>
+        `;
+        document.body.appendChild(toast);
+        setTimeout(() => {
+          toast.classList.add('fade-out');
+          setTimeout(() => {
+            if (toast && toast.parentNode) {
+              toast.parentNode.removeChild(toast);
+            }
+          }, 500);
+        }, 4500);
+      } catch (e) {
+        console.error('Achievement toast spawn failed:', e);
+      }
+    };
+
+    const completedChartPoints = computed(() => {
+      const history = completedHistory.value;
+      if (!history || history.length === 0) return { line: '', area: '', dots: [] };
+      
+      const M = Math.max(...history.map(h => h.count), 3);
+      
+      const dots = history.map((h, i) => {
+        const x = 40 + i * 70;
+        const y = 160 - (h.count / M) * 120;
+        let label = h.date.substring(5); // 'MM-DD'
+        return { x, y, count: h.count, date: label };
+      });
+      
+      const linePath = dots.map((d, i) => `${i === 0 ? 'M' : 'L'} ${d.x} ${d.y}`).join(' ');
+      const areaPath = `${linePath} L ${dots[6].x} 160 L ${dots[0].x} 160 Z`;
+      
+      return { line: linePath, area: areaPath, dots };
+    });
+
+    const achievementStatusList = computed(() => {
+      return PRESET_ACHIEVEMENTS.map(ach => {
+        const isUnlocked = unlockedAchievements.value.includes(ach.id);
+        return {
+          id: ach.id,
+          icon: ach.icon,
+          title: lang.value === 'zh' ? ach.titleZh : ach.titleEn,
+          desc: lang.value === 'zh' ? ach.descZh : ach.descEn,
+          unlocked: isUnlocked
+        };
+      });
+    });
+
     // Lifecycle mount initialization
     onMounted(() => {
       fetchStorage();
@@ -2048,6 +2557,19 @@ const app = createApp({
       timerTimeLeft,
       timerTotalDuration,
       isTimerRunning,
+      
+      // 📈 Gamification & Analytics Phase 5
+      xp,
+      level,
+      totalXp,
+      focusStreak,
+      totalFocusedMinutes,
+      completedHistory,
+      unlockedAchievements,
+      xpToNextLevel,
+      addXp,
+      completedChartPoints,
+      achievementStatusList,
       timerModeText,
       timerModeClass,
       timerStrokeStyle,

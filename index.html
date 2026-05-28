@@ -203,7 +203,7 @@
                         </div>
                     </div>
 
-                    <!-- 📋 List / 📊 Kanban View Switcher (Phase 3, Advanced Mode only) -->
+                    <!-- 📋 List / 📊 Kanban / 📈 Analytics View Switcher (Phase 3 & 5, Advanced Mode only) -->
                     <div class="view-switcher-tabs" v-if="appMode === 'advanced'" style="display: flex; gap: 12px; margin-bottom: 18px; border-bottom: 1.5px solid var(--border-color); padding-bottom: 8px;">
                         <button 
                             type="button" 
@@ -222,6 +222,15 @@
                             style="border: none; background: transparent; padding: 6px 16px; font-size: 13px; font-weight: 700; border-radius: var(--radius-sm); cursor: pointer; color: var(--text-secondary); transition: all 0.2s; display: flex; align-items: center; gap: 6px;"
                         >
                             📊 {{ lang === 'zh' ? '看板视图' : 'Kanban Board' }}
+                        </button>
+                        <button 
+                            type="button" 
+                            class="view-tab-btn" 
+                            :class="{ active: currentView === 'analytics' }" 
+                            @click="currentView = 'analytics'; SoundEffects.playClick();"
+                            style="border: none; background: transparent; padding: 6px 16px; font-size: 13px; font-weight: 700; border-radius: var(--radius-sm); cursor: pointer; color: var(--text-secondary); transition: all 0.2s; display: flex; align-items: center; gap: 6px;"
+                        >
+                            📈 {{ lang === 'zh' ? '效能分析' : 'Analytics' }}
                         </button>
                     </div>
 
@@ -964,11 +973,143 @@
                         </div>
 
                     </div>
+
+                    <!-- 📈 Analytics & Gamification View (Phase 5, Advanced Mode only) -->
+                    <div class="analytics-board" v-if="appMode === 'advanced' && currentView === 'analytics'">
+                        
+                        <!-- 1. Stats Grid -->
+                        <div class="analytics-stats-grid">
+                            <!-- Streak -->
+                            <div class="stat-card">
+                                <div class="stat-icon">🔥</div>
+                                <div class="stat-info">
+                                    <span class="stat-value">{{ focusStreak }} {{ lang === 'zh' ? '天' : 'Days' }}</span>
+                                    <span class="stat-label">{{ lang === 'zh' ? '连续专注天数' : 'Consecutive Streak' }}</span>
+                                </div>
+                            </div>
+                            <!-- Total Focused Time -->
+                            <div class="stat-card">
+                                <div class="stat-icon">🎯</div>
+                                <div class="stat-info">
+                                    <span class="stat-value">{{ totalFocusedMinutes }} {{ lang === 'zh' ? '分钟' : 'Mins' }}</span>
+                                    <span class="stat-label">{{ lang === 'zh' ? '累计专注时间' : 'Total Focused' }}</span>
+                                </div>
+                            </div>
+                            <!-- Completion Rate -->
+                            <div class="stat-card">
+                                <div class="stat-icon">📈</div>
+                                <div class="stat-info">
+                                    <span class="stat-value">{{ progressRate }}%</span>
+                                    <span class="stat-label">{{ lang === 'zh' ? '任务完成率' : 'Completion Rate' }}</span>
+                                </div>
+                            </div>
+                            <!-- Total XP -->
+                            <div class="stat-card">
+                                <div class="stat-icon">💎</div>
+                                <div class="stat-info">
+                                    <span class="stat-value">{{ totalXp }} XP</span>
+                                    <span class="stat-label">{{ lang === 'zh' ? '累计获得经验' : 'Total XP Earned' }}</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- 2. Chart Section -->
+                        <div class="analytics-chart-card">
+                            <div class="chart-header">
+                                <h3 class="chart-title">📊 {{ lang === 'zh' ? '最近 7 天完成任务分布' : '7-Day Completion Distribution' }}</h3>
+                                <span class="chart-sub">{{ lang === 'zh' ? '每日勾选完成的任务数量走势' : 'Daily completed task counts' }}</span>
+                            </div>
+                            <div class="chart-container">
+                                <svg viewBox="0 0 500 200" class="responsive-svg-chart" v-if="completedChartPoints.dots.length > 0">
+                                    <defs>
+                                        <linearGradient id="chart-area-grad" x1="0" y1="0" x2="0" y2="1">
+                                            <stop offset="0%" stop-color="var(--accent)" stop-opacity="0.35"/>
+                                            <stop offset="100%" stop-color="var(--accent)" stop-opacity="0.00"/>
+                                        </linearGradient>
+                                        <linearGradient id="chart-line-grad" x1="0" y1="0" x2="1" y2="0">
+                                            <stop offset="0%" stop-color="var(--accent)"/>
+                                            <stop offset="50%" stop-color="#ff007f"/>
+                                            <stop offset="100%" stop-color="var(--accent)"/>
+                                        </linearGradient>
+                                    </defs>
+                                    
+                                    <!-- Y-Axis grids -->
+                                    <line x1="30" y1="40" x2="470" y2="40" stroke="var(--border-color)" stroke-width="1" stroke-dasharray="4,4"/>
+                                    <line x1="30" y1="100" x2="470" y2="100" stroke="var(--border-color)" stroke-width="1" stroke-dasharray="4,4"/>
+                                    <line x1="30" y1="160" x2="470" y2="160" stroke="var(--border-color)" stroke-width="1"/>
+
+                                    <!-- Area under the line -->
+                                    <path :d="completedChartPoints.area" fill="url(#chart-area-grad)" class="chart-area-path" />
+                                    
+                                    <!-- Spline Line -->
+                                    <path :d="completedChartPoints.line" fill="none" stroke="url(#chart-line-grad)" stroke-width="3.5" stroke-linecap="round" class="chart-line-path" />
+
+                                    <!-- Dots -->
+                                    <g v-for="(dot, idx) in completedChartPoints.dots" :key="idx" class="chart-dot-group">
+                                        <!-- Interactive Hover circles -->
+                                        <circle :cx="dot.x" :cy="dot.y" r="8" fill="rgba(var(--accent-rgb), 0.15)" class="chart-dot-glow"/>
+                                        <circle :cx="dot.x" :cy="dot.y" r="4.5" fill="var(--accent)" stroke="#ffffff" stroke-width="1.5" class="chart-dot-core"/>
+                                        
+                                        <!-- Count bubble on top of dots -->
+                                        <text :x="dot.x" :y="dot.y - 10" text-anchor="middle" class="chart-dot-text">{{ dot.count }}</text>
+                                        <!-- X-Axis Labels -->
+                                        <text :x="dot.x" y="180" text-anchor="middle" class="chart-axis-text">{{ dot.date }}</text>
+                                    </g>
+                                </svg>
+                            </div>
+                        </div>
+
+                         <!-- 3. Achievement Badges Grid -->
+                         <div class="analytics-chart-card" style="margin-top: 20px;">
+                             <div class="chart-header">
+                                 <h3 class="chart-title">🏆 {{ lang === 'zh' ? '成就里程碑荣誉馆' : 'Achievement Gallery' }}</h3>
+                                 <span class="chart-sub">{{ lang === 'zh' ? '在高效专注的征程中留下您的专属烙印' : 'Leave your unique mark on your efficiency journey' }}</span>
+                             </div>
+                             <div class="achievements-grid">
+                                 <div 
+                                     v-for="ach in achievementStatusList" 
+                                     :key="ach.id" 
+                                     class="achievement-card" 
+                                     :class="{ unlocked: ach.unlocked }"
+                                     :title="ach.desc"
+                                 >
+                                     <div class="ach-badge-ring">
+                                         <div class="ach-badge-icon">{{ ach.icon }}</div>
+                                     </div>
+                                     <div class="ach-info">
+                                         <span class="ach-title">{{ ach.title }}</span>
+                                         <span class="ach-desc">{{ ach.desc }}</span>
+                                     </div>
+                                 </div>
+                             </div>
+                         </div>
+
+                    </div>
                 </main>
 
                 <!-- RIGHT PANEL: SIDEBAR WIDGETS -->
                 <aside class="side-bar">
                     
+                    <!-- Level & XP Gamification Widget (Phase 5, Advanced Mode only) -->
+                    <div class="sidebar-widget" v-if="appMode === 'advanced'" style="position: relative; overflow: hidden; background: linear-gradient(135deg, rgba(var(--bg-secondary-rgb), 0.6), rgba(var(--bg-secondary-rgb), 0.45)); border: 1.5px solid var(--border-color);">
+                        <div class="widget-title" style="display: flex; justify-content: space-between; align-items: center;">
+                            <span>🏆 {{ lang === 'zh' ? '角色成长段位' : 'Efficiency Tier' }}</span>
+                            <span style="font-size: 10px; font-weight: 800; color: var(--accent); background: rgba(var(--accent-rgb), 0.08); padding: 1px 6px; border-radius: 4px;">Lv. {{ level }}</span>
+                        </div>
+                        <div class="xp-progress-wrapper" style="margin-top: 10px;">
+                            <div style="display: flex; justify-content: space-between; font-size: 11px; font-weight: 700; color: var(--text-secondary); margin-bottom: 5px;">
+                                <span>XP: {{ xp }} / {{ xpToNextLevel }}</span>
+                                <span>{{ Math.round((xp / xpToNextLevel) * 100) }}%</span>
+                            </div>
+                            <div class="xp-track" style="height: 6px; background: rgba(var(--border-color-rgb), 0.2); border-radius: 3px; overflow: hidden; position: relative;">
+                                <div class="xp-bar" :style="{ width: (xp / xpToNextLevel) * 100 + '%' }" style="height: 100%; border-radius: 3px; background: linear-gradient(90deg, var(--accent), #ff007f, var(--accent)); background-size: 200% 100%; animation: xp-bar-shift 3s linear infinite;"></div>
+                            </div>
+                            <div style="font-size: 10px; color: var(--text-secondary); text-align: center; margin-top: 8px; font-style: italic;">
+                                🔥 {{ lang === 'zh' ? '专注并完成事项即可获取经验！' : 'Earn XP by focusing & finishing tasks!' }}
+                            </div>
+                        </div>
+                    </div>
+
                     <!-- Progress Stats Widget -->
                     <div class="sidebar-widget">
                         <div class="widget-title">{{ t('progressRateTitle') }}</div>
