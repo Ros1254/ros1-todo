@@ -400,6 +400,7 @@ const app = createApp({
     const intention = ref('all'); // all, ongoing, completed, removed
     
     const checkEmpty = ref(false);
+    const newTodoIsTomorrow = ref(false);
     const settingsActive = ref(false);
     const isEditingSlogan = ref(false);
     const originalSlogan = ref('');
@@ -648,20 +649,38 @@ const app = createApp({
       return result;
     });
 
-    // 📊 Kanban Board Column Filters (Phase 3)
+    // 🌅 Tomorrow Plan Computed Filters
+    const todayTodos = computed(() => {
+      if (appMode.value !== 'advanced') return filteredTodos.value;
+      return filteredTodos.value.filter(t => !t.isTomorrow);
+    });
+
+    const tomorrowTodos = computed(() => {
+      if (appMode.value !== 'advanced') return [];
+      return filteredTodos.value.filter(t => t.isTomorrow);
+    });
+
+    // 📊 Kanban Board Column Filters (Phase 3 & Tomorrow Column integration)
+    const kanbanTomorrowTasks = computed(() => {
+      return filteredTodos.value.filter(t => !t.removed && t.isTomorrow);
+    });
+
     const kanbanTodoTasks = computed(() => {
-      return filteredTodos.value.filter(t => !t.removed && (t.status === 'todo' || (!t.status && !t.completed)));
+      return filteredTodos.value.filter(t => !t.removed && !t.isTomorrow && (t.status === 'todo' || (!t.status && !t.completed)));
     });
 
     const kanbanProgressTasks = computed(() => {
-      return filteredTodos.value.filter(t => !t.removed && t.status === 'progress');
+      return filteredTodos.value.filter(t => !t.removed && !t.isTomorrow && t.status === 'progress');
     });
 
     const kanbanDoneTasks = computed(() => {
-      return filteredTodos.value.filter(t => !t.removed && (t.status === 'done' || (!t.status && t.completed)));
+      return filteredTodos.value.filter(t => !t.removed && !t.isTomorrow && (t.status === 'done' || (!t.status && t.completed)));
     });
 
     const showEmptyTips = computed(() => {
+      if (appMode.value === 'advanced') {
+        return todayTodos.value.length === 0 && tomorrowTodos.value.length === 0;
+      }
       return filteredTodos.value.length === 0;
     });
 
@@ -1020,7 +1039,8 @@ const app = createApp({
         tags: [...newTodoTags.value],
         subtasks: [],
         priority: newTodoPriority.value, // 'low', 'normal', 'high'
-        recurrence: newTodoRecurrence.value // 'none', 'daily', 'weekly', 'monthly'
+        recurrence: newTodoRecurrence.value, // 'none', 'daily', 'weekly', 'monthly'
+        isTomorrow: appMode.value === 'advanced' ? newTodoIsTomorrow.value : false
       });
 
       // Clear input fields
@@ -1028,6 +1048,7 @@ const app = createApp({
       newTodoTags.value = [];
       newTodoPriority.value = 'normal';
       newTodoRecurrence.value = 'none';
+      newTodoIsTomorrow.value = false;
       checkEmpty.value = false;
       SoundEffects.playClick();
     };
@@ -1397,12 +1418,12 @@ const app = createApp({
     };
 
     // DRAG AND DROP REORDERING (MOUSE & MOBILE TOUCH)
-    const handleDragStart = (index, event) => {
+    const handleDragStart = (todo, event) => {
       if (editedTodo.value !== null) {
         event.preventDefault();
         return;
       }
-      dragIndex.value = index;
+      draggedTodo.value = todo;
       event.dataTransfer.effectAllowed = 'move';
       
       setTimeout(() => {
@@ -1414,7 +1435,7 @@ const app = createApp({
     const handleDragEnd = (event) => {
       const el = event.target;
       el.classList.remove('dragging');
-      dragIndex.value = null;
+      draggedTodo.value = null;
       
       const items = document.querySelectorAll('.todo-item');
       items.forEach(it => it.classList.remove('drag-over'));
@@ -1422,33 +1443,34 @@ const app = createApp({
       SoundEffects.playClick();
     };
 
-    const handleDragOver = (index, event) => {
+    const handleDragOver = (todo, event) => {
       event.preventDefault();
     };
 
-    const handleDragEnter = (index, event) => {
+    const handleDragEnter = (todo, event) => {
       event.preventDefault();
-      if (dragIndex.value === null || dragIndex.value === index) return;
+      if (!draggedTodo.value || draggedTodo.value.id === todo.id) return;
       
-      const activeTodos = [...filteredTodos.value];
-      const sourceIndexInMain = todos.value.indexOf(activeTodos[dragIndex.value]);
-      const targetIndexInMain = todos.value.indexOf(activeTodos[index]);
+      // 限制只能在同一个时间调度列表中进行排序（今日跟今日排，明日跟明日排）
+      if (draggedTodo.value.isTomorrow !== todo.isTomorrow) return;
+      
+      const sourceIndexInMain = todos.value.findIndex(t => t.id === draggedTodo.value.id);
+      const targetIndexInMain = todos.value.findIndex(t => t.id === todo.id);
       
       if (sourceIndexInMain > -1 && targetIndexInMain > -1) {
         const temp = todos.value[sourceIndexInMain];
         todos.value.splice(sourceIndexInMain, 1);
         todos.value.splice(targetIndexInMain, 0, temp);
-        dragIndex.value = index;
       }
     };
 
-    const handleTouchStart = (index, event) => {
+    const handleTouchStart = (todo, event) => {
       if (editedTodo.value !== null) return;
-      touchStartItemIndex.value = index;
+      touchDraggedTodo = todo;
     };
 
     const handleTouchMove = (event) => {
-      if (touchStartItemIndex.value === null) return;
+      if (!touchDraggedTodo) return;
       
       const touch = event.touches[0];
       const elem = document.elementFromPoint(touch.clientX, touch.clientY);
@@ -1459,41 +1481,56 @@ const app = createApp({
       if (!itemCard) return;
       
       const targetId = Number(itemCard.getAttribute('data-id'));
-      if (isNaN(targetId)) return;
+      if (isNaN(targetId) || touchDraggedTodo.id === targetId) return;
       
-      const activeList = [...filteredTodos.value];
-      const sourceItem = activeList[touchStartItemIndex.value];
-      if (!sourceItem || sourceItem.id === targetId) return;
+      const targetItem = todos.value.find(t => t.id === targetId);
+      if (!targetItem) return;
       
-      const targetIndex = activeList.findIndex(t => t.id === targetId);
-      if (targetIndex === -1) return;
+      // 限制只能在同一个时间计划列表里拖曳排序
+      if (touchDraggedTodo.isTomorrow !== targetItem.isTomorrow) return;
       
-      const sourceIndexInMain = todos.value.findIndex(t => t.id === sourceItem.id);
+      const sourceIndexInMain = todos.value.findIndex(t => t.id === touchDraggedTodo.id);
       const targetIndexInMain = todos.value.findIndex(t => t.id === targetId);
       
       if (sourceIndexInMain > -1 && targetIndexInMain > -1) {
         const temp = todos.value[sourceIndexInMain];
         todos.value.splice(sourceIndexInMain, 1);
         todos.value.splice(targetIndexInMain, 0, temp);
-        touchStartItemIndex.value = targetIndex;
       }
     };
 
     const handleTouchEnd = () => {
-      touchStartItemIndex.value = null;
+      touchDraggedTodo = null;
       SoundEffects.playClick();
     };
 
-    // 📊 KANBAN BOARD DRAG & DROP ENGINE (Phase 3)
+    // 📊 KANBAN BOARD DRAG & DROP ENGINE (Phase 3 & Tomorrow Column)
     const moveTodoToStatus = (todo, status) => {
       if (!todo) return;
       
-      const prevStatus = todo.status || (todo.completed ? 'done' : 'todo');
-      if (prevStatus === status) return;
+      let targetStatus = status;
+      let targetTomorrow = todo.isTomorrow || false;
       
-      todo.status = status;
+      if (status === 'tomorrow') {
+        targetTomorrow = true;
+        targetStatus = 'todo';
+      } else {
+        targetTomorrow = false;
+      }
       
-      if (status === 'done') {
+      const prevStatus = todo.isTomorrow ? 'tomorrow' : (todo.status || (todo.completed ? 'done' : 'todo'));
+      const nextStatus = targetTomorrow ? 'tomorrow' : targetStatus;
+      if (prevStatus === nextStatus) return;
+      
+      todo.isTomorrow = targetTomorrow;
+      todo.status = targetStatus;
+      
+      if (nextStatus === 'tomorrow') {
+        if (todo.completed) {
+          todo.completed = false;
+        }
+        SoundEffects.playClick();
+      } else if (targetStatus === 'done') {
         if (!todo.completed) {
           todo.completed = true;
           // Also complete all subtasks
@@ -1964,7 +2001,9 @@ const app = createApp({
         const isNewWeek = getMonday(lastCheckDate) !== getMonday(today);
         const isNewMonth = lastCheckDate.getMonth() !== today.getMonth() || lastCheckDate.getFullYear() !== today.getFullYear();
         
+        let countRollovers = 0;
         todos.value.forEach(todo => {
+          // 1. 周期任务重置逻辑
           if (todo.recurrence && todo.recurrence !== 'none') {
             let shouldReset = false;
             
@@ -1984,17 +2023,31 @@ const app = createApp({
               countResets++;
             }
           }
+
+          // 2. 明日待办跨天自动流转今日逻辑
+          if (todo.isTomorrow && isNewDay) {
+            todo.isTomorrow = false;
+            countRollovers++;
+          }
         });
         
-        if (countResets > 0) {
-          console.log(`Scheduler: Reset ${countResets} recurring tasks.`);
+        if (countResets > 0 || countRollovers > 0) {
+          console.log(`Scheduler: Reset ${countResets} recurring tasks, rolled over ${countRollovers} tomorrow tasks.`);
           saveTodos();
           
           setTimeout(() => {
-            sendDesktopNotification(
-              lang.value === 'zh' ? '🔄 周期任务重置提醒' : '🔄 Recurring Tasks Reset',
-              lang.value === 'zh' ? `新的一天开启，系统已为您自动唤醒并重置了 ${countResets} 个周期任务！` : `A new cycle has started. ${countResets} recurring tasks have been reset for you!`
-            );
+            let title = lang.value === 'zh' ? '🔄 任务日程周期刷新' : '🔄 Tasks Cycle Update';
+            let body = '';
+            if (lang.value === 'zh') {
+              body = '新的一天开启！';
+              if (countResets > 0) body += `已为您重置了 ${countResets} 个周期任务。`;
+              if (countRollovers > 0) body += `昨日计划的 ${countRollovers} 个“明日待办”已自动汇入“今日待办”！🌅`;
+            } else {
+              body = 'A new day has arrived! ';
+              if (countResets > 0) body += `${countResets} recurring tasks reset. `;
+              if (countRollovers > 0) body += `${countRollovers} tomorrow tasks successfully rolled over to Today! 🌅`;
+            }
+            sendDesktopNotification(title, body);
           }, 3000);
         }
         
@@ -2374,6 +2427,10 @@ const app = createApp({
       selectedTagsFilter,
       intention,
       checkEmpty,
+      newTodoIsTomorrow,
+      todayTodos,
+      tomorrowTodos,
+      kanbanTomorrowTasks,
       settingsActive,
       isEditingSlogan,
       originalSlogan,

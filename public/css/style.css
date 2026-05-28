@@ -1620,7 +1620,7 @@ body {
 /* Kanban Board Container Grid */
 .kanban-board {
   display: grid;
-  grid-template-columns: repeat(3, minmax(260px, 1fr));
+  grid-template-columns: repeat(4, minmax(220px, 1fr));
   gap: 20px;
   width: 100%;
   margin-top: 10px;
@@ -2656,5 +2656,21 @@ ul.todo-list.compact-mode .todo-item:hover {
   margin-top: 8px !important;
   pointer-events: auto !important;
   transition-delay: 0.08s !important;
+}
+
+/* Tomorrow Plan Visual Distinction (🌅) */
+.todo-item.is-tomorrow {
+  border-style: dashed !important;
+  border-color: rgba(var(--accent-rgb), 0.4) !important;
+  opacity: 0.85;
+  background: var(--bg-card) !important;
+}
+
+.todo-item.is-tomorrow:hover,
+.todo-item.is-tomorrow:focus-within {
+  opacity: 1;
+  border-color: var(--accent) !important;
+  border-style: solid !important;
+  box-shadow: 0 8px 24px rgba(var(--accent-rgb), 0.15) !important;
 }
 
