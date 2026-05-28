@@ -1474,5 +1474,110 @@ body {
   transform: translateY(-1px);
 }
 
+/* ==========================================================================
+   🧭 PHASE 4: PRIORITY STYLES, NEON GRADIENTS & RECURRENCE BADGES
+   ========================================================================== */
+
+/* High Priority: Rotating Neon flowing border-box gradient with soft glowing shadow */
+.todo-item.priority-high {
+  border: 1.5px solid transparent;
+  background-image: linear-gradient(var(--bg-secondary), var(--bg-secondary)), 
+                    linear-gradient(135deg, #ff007f, #7f00ff, #00f2fe, #ff007f);
+  background-origin: border-box;
+  background-clip: padding-box, border-box;
+  background-size: 100% 100%, 300% 300%;
+  animation: neon-border-flow 6s ease infinite;
+  box-shadow: 0 8px 24px rgba(255, 0, 127, 0.12), 0 2px 8px rgba(127, 0, 255, 0.08);
+  transition: transform var(--transition-bounce), box-shadow var(--transition-bounce), background var(--transition-normal);
+}
+
+.todo-item.priority-high:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 12px 32px rgba(255, 0, 127, 0.22), 0 4px 12px rgba(127, 0, 255, 0.12);
+}
+
+/* Low Priority: Opacity fade filter, reduces visual clutter, interactive focus on hover */
+.todo-item.priority-low {
+  opacity: 0.55;
+  box-shadow: 0 2px 6px var(--shadow-color);
+  filter: grayscale(15%);
+  transition: all var(--transition-normal);
+}
+
+.todo-item.priority-low:hover {
+  opacity: 0.9;
+  filter: grayscale(0%);
+  box-shadow: 0 6px 16px var(--shadow-color);
+}
+
+/* Priority Badges: Clean, high-contrast, translucent modern designs */
+.priority-badge {
+  transition: all var(--transition-fast);
+}
+
+.priority-badge.high {
+  color: #ff007f !important;
+  background: rgba(255, 0, 127, 0.08) !important;
+  border: 1px solid rgba(255, 0, 127, 0.2) !important;
+  text-shadow: 0 0 4px rgba(255, 0, 127, 0.1);
+}
+
+.priority-badge.normal {
+  color: var(--accent) !important;
+  background: rgba(var(--accent-rgb), 0.06) !important;
+  border: 1px solid rgba(var(--accent-rgb), 0.15) !important;
+}
+
+.priority-badge.low {
+  color: var(--text-secondary) !important;
+  background: rgba(120, 120, 120, 0.08) !important;
+  border: 1px solid var(--border-color) !important;
+}
+
+.priority-badge:hover {
+  transform: scale(1.05);
+}
+
+.priority-badge:active {
+  transform: scale(0.95);
+}
+
+/* Recurrence Badge: Elegant, glassmorphic recurring cycle indicator */
+.recurrence-badge {
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+  transition: all var(--transition-fast);
+}
+
+.recurrence-badge:hover {
+  background: rgba(var(--accent-rgb), 0.08) !important;
+  border-color: var(--accent) !important;
+  transform: scale(1.03);
+}
+
+/* Attribute buttons in advanced input row */
+.attr-btn {
+  transition: all var(--transition-fast);
+}
+
+.attr-btn:hover {
+  background: rgba(var(--accent-rgb), 0.03);
+  color: var(--text-primary);
+  border-color: var(--accent);
+}
+
+/* 🌀 Neon Flow Keyframe Animation */
+@keyframes neon-border-flow {
+  0% {
+    background-position: 0% 0%, 0% 50%;
+  }
+  50% {
+    background-position: 0% 0%, 100% 50%;
+  }
+  100% {
+    background-position: 0% 0%, 0% 50%;
+  }
+}
+
 
 

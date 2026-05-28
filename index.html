@@ -130,6 +130,60 @@
                                 {{ tag }}
                             </button>
                         </div>
+
+                        <!-- 🧭 Advanced Task Attributes: Priority & Recurrence (Phase 4, Advanced Mode only) -->
+                        <div class="advanced-inputs-row" v-if="appMode === 'advanced'" style="display: flex; gap: 12px; margin-top: 10px; padding-top: 10px; border-top: 1.5px dashed var(--border-color); flex-wrap: wrap;">
+                            
+                            <!-- Priority Selector -->
+                            <div style="display: flex; align-items: center; gap: 6px;">
+                                <span style="font-size: 12.5px; font-weight: 700; color: var(--text-secondary);">🎯 {{ lang === 'zh' ? '优先级:' : 'Priority:' }}</span>
+                                <div style="display: flex; gap: 4px;">
+                                    <button 
+                                        type="button"
+                                        class="attr-btn low" 
+                                        @click="newTodoPriority = 'low'; SoundEffects.playClick();"
+                                        style="border: 1px solid var(--border-color); background: transparent; padding: 4px 10px; font-size: 11.5px; font-weight: 700; border-radius: var(--radius-sm); cursor: pointer; color: var(--text-secondary); transition: all 0.2s;"
+                                        :style="newTodoPriority === 'low' ? 'background: rgba(var(--accent-rgb), 0.05); color: var(--text-primary); border-color: var(--accent);' : ''"
+                                    >
+                                        {{ lang === 'zh' ? '低' : 'Low' }}
+                                    </button>
+                                    <button 
+                                        type="button"
+                                        class="attr-btn normal" 
+                                        @click="newTodoPriority = 'normal'; SoundEffects.playClick();"
+                                        style="border: 1px solid var(--border-color); background: transparent; padding: 4px 10px; font-size: 11.5px; font-weight: 700; border-radius: var(--radius-sm); cursor: pointer; color: var(--text-secondary); transition: all 0.2s;"
+                                        :style="newTodoPriority === 'normal' ? 'background: rgba(var(--accent-rgb), 0.05); color: var(--text-primary); border-color: var(--accent);' : ''"
+                                    >
+                                        {{ lang === 'zh' ? '中' : 'Normal' }}
+                                    </button>
+                                    <button 
+                                        type="button"
+                                        class="attr-btn high" 
+                                        @click="newTodoPriority = 'high'; SoundEffects.playClick();"
+                                        style="border: 1px solid var(--border-color); background: transparent; padding: 4px 10px; font-size: 11.5px; font-weight: 700; border-radius: var(--radius-sm); cursor: pointer; color: var(--text-secondary); transition: all 0.2s;"
+                                        :style="newTodoPriority === 'high' ? 'background: rgba(var(--accent-rgb), 0.1); color: #ff007f; border-color: #ff007f; box-shadow: 0 0 8px rgba(255,0,127,0.15);' : ''"
+                                    >
+                                        {{ lang === 'zh' ? '高' : 'High' }}
+                                    </button>
+                                </div>
+                            </div>
+
+                            <!-- Recurrence Selector -->
+                            <div style="display: flex; align-items: center; gap: 6px; margin-left: auto;">
+                                <span style="font-size: 12.5px; font-weight: 700; color: var(--text-secondary);">🔁 {{ lang === 'zh' ? '周期重复:' : 'Recurrence:' }}</span>
+                                <select 
+                                    v-model="newTodoRecurrence" 
+                                    style="padding: 4px 8px; font-size: 12px; font-weight: 700; border: 1.5px solid var(--border-color); background: var(--bg-primary); color: var(--text-primary); border-radius: var(--radius-sm); outline: none; cursor: pointer;"
+                                    @change="SoundEffects.playClick()"
+                                >
+                                    <option value="none">{{ lang === 'zh' ? '单次任务' : 'Once' }}</option>
+                                    <option value="daily">{{ lang === 'zh' ? '🔁 每日重复' : '🔁 Daily' }}</option>
+                                    <option value="weekly">{{ lang === 'zh' ? '🔁 每周重复' : '🔁 Weekly' }}</option>
+                                    <option value="monthly">{{ lang === 'zh' ? '🔁 每月重复' : '🔁 Monthly' }}</option>
+                                </select>
+                            </div>
+
+                        </div>
                     </div>
 
                     <!-- Double-clickable Slogan Bar -->
@@ -155,13 +209,13 @@
                             v-for="(todo, index) in filteredTodos" 
                             :key="todo.id" 
                             class="todo-item"
-                            :class="{ dragging: dragIndex === index }"
+                            :class="{ dragging: dragIndex === index, 'priority-high': appMode === 'advanced' && todo.priority === 'high', 'priority-low': appMode === 'advanced' && todo.priority === 'low' }"
                             :draggable="editedTodo === null || editedTodo.id !== todo.id"
                             :data-id="todo.id"
                             @dragstart="handleDragStart(index, $event)"
                             @dragend="handleDragEnd($event)"
                             @dragover="handleDragOver(index, $event)"
-                            @dragenter="handleDragEnter(index, $event)"
+                            @dragenter="handleDragOver(index, $event)"
                             @touchstart="handleTouchStart(index, $event)"
                             @touchmove="handleTouchMove($event)"
                             @touchend="handleTouchEnd"
@@ -182,7 +236,28 @@
                             <div class="todo-content-block" @dblclick="startEditTodo(todo)">
                                 <div v-if="editedTodo === null || editedTodo.id !== todo.id">
                                     <span class="todo-title" :class="{ completed: todo.completed }">
+                                        <!-- Priority badge (Phase 4) -->
+                                        <span 
+                                            v-if="appMode === 'advanced' && !todo.removed" 
+                                            class="priority-badge" 
+                                            :class="todo.priority || 'normal'" 
+                                            @click.stop="cycleTodoPriority(todo)"
+                                            style="margin-right: 6px; display: inline-flex; align-items: center; justify-content: center; font-size: 9px; font-weight: 800; padding: 2px 6px; border-radius: 4px; cursor: pointer; text-transform: uppercase; user-select: none;"
+                                        >
+                                            {{ todo.priority === 'high' ? 'High' : (todo.priority === 'low' ? 'Low' : 'Norm') }}
+                                        </span>
+
                                         {{ todo.title }}
+
+                                        <!-- Recurrence badge (Phase 4) -->
+                                        <span 
+                                            v-if="appMode === 'advanced' && todo.recurrence && todo.recurrence !== 'none' && !todo.removed" 
+                                            class="recurrence-badge" 
+                                            style="margin-left: 6px; display: inline-flex; align-items: center; gap: 3px; font-size: 9.5px; font-weight: 700; color: var(--text-secondary); background: rgba(var(--accent-rgb), 0.04); border: 1px solid var(--border-color); padding: 2px 6px; border-radius: 4px;"
+                                        >
+                                            <span>🔁</span>
+                                            <span>{{ todo.recurrence === 'daily' ? (lang === 'zh' ? '每日' : 'Daily') : (todo.recurrence === 'weekly' ? (lang === 'zh' ? '每周' : 'Weekly') : (lang === 'zh' ? '每月' : 'Monthly')) }}</span>
+                                        </span>
                                     </span>
                                 </div>
                                 <div v-else>
@@ -661,6 +736,18 @@
                             </div>
                             <label class="switch-control">
                                 <input type="checkbox" v-model="soundToggle" @change="toggleSound" />
+                                <span class="switch-slider"></span>
+                            </label>
+                        </div>
+
+                        <!-- Desktop Notifications Toggle (Phase 4) -->
+                        <div class="opt-row" v-if="appMode === 'advanced'">
+                            <div class="opt-label-block">
+                                <div class="opt-title">{{ lang === 'zh' ? '桌面消息推送' : 'Desktop Notifications' }}</div>
+                                <div class="opt-desc">{{ lang === 'zh' ? '专注结束时在系统右下角弹出桌面提醒' : 'Popup system notifications when focus intervals end' }}</div>
+                            </div>
+                            <label class="switch-control">
+                                <input type="checkbox" :checked="notificationToggle" @change="toggleNotification" />
                                 <span class="switch-slider"></span>
                             </label>
                         </div>

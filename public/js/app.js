@@ -428,7 +428,9 @@ const STORAGE_KEYS = {
   appMode: 'ros1-todo-app-mode',
   focusDuration: 'ros1-todo-focus-dur',
   shortBreakDuration: 'ros1-todo-sbreak-dur',
-  longBreakDuration: 'ros1-todo-lbreak-dur'
+  longBreakDuration: 'ros1-todo-lbreak-dur',
+  notification: 'ros1-todo-notification-toggle',
+  lastCheck: 'ros1-todo-last-check-date'
 };
 
 // HELPER UTILITY FOR Multimodal Audio base64 conversions
@@ -507,6 +509,11 @@ const app = createApp({
     let timerInterval = null;
     let timerTargetEndTime = null;
 
+    // 🔔 Notification, Priority, and Recurrence States (Phase 4)
+    const notificationToggle = ref(false);
+    const newTodoPriority = ref('normal'); // 'low', 'normal', 'high'
+    const newTodoRecurrence = ref('none'); // 'none', 'daily', 'weekly', 'monthly'
+
     // Fetch local storage initial state
     const fetchStorage = () => {
       try {
@@ -528,6 +535,9 @@ const app = createApp({
 
         timerTotalDuration.value = focusDuration.value;
         timerTimeLeft.value = focusDuration.value;
+
+        // Load Notification toggles (Phase 4)
+        notificationToggle.value = localStorage.getItem(STORAGE_KEYS.notification) === 'true';
 
         // Sync HTML data attribute with theme
         document.documentElement.setAttribute('data-theme', theme.value);
@@ -564,6 +574,7 @@ const app = createApp({
     const saveFocusDuration = () => localStorage.setItem(STORAGE_KEYS.focusDuration, focusDuration.value.toString());
     const saveShortBreakDuration = () => localStorage.setItem(STORAGE_KEYS.shortBreakDuration, shortBreakDuration.value.toString());
     const saveLongBreakDuration = () => localStorage.setItem(STORAGE_KEYS.longBreakDuration, longBreakDuration.value.toString());
+    const saveNotificationToggle = () => localStorage.setItem(STORAGE_KEYS.notification, notificationToggle.value.toString());
 
     // Watchers for continuous storage synchronization
     watch(todos, saveTodos, { deep: true });
@@ -587,6 +598,7 @@ const app = createApp({
     watch(focusDuration, saveFocusDuration);
     watch(shortBreakDuration, saveShortBreakDuration);
     watch(longBreakDuration, saveLongBreakDuration);
+    watch(notificationToggle, saveNotificationToggle);
     watch(appMode, (newMode) => {
       saveAppMode();
       if (newMode === 'normal') {
@@ -1003,12 +1015,16 @@ const app = createApp({
         completed: false,
         removed: false,
         tags: [...newTodoTags.value],
-        subtasks: []
+        subtasks: [],
+        priority: newTodoPriority.value, // 'low', 'normal', 'high'
+        recurrence: newTodoRecurrence.value // 'none', 'daily', 'weekly', 'monthly'
       });
 
       // Clear input fields
       newTodoTitle.value = '';
       newTodoTags.value = [];
+      newTodoPriority.value = 'normal';
+      newTodoRecurrence.value = 'none';
       checkEmpty.value = false;
       SoundEffects.playClick();
     };
@@ -1453,6 +1469,10 @@ const app = createApp({
           longBreakDuration.value = 15 * 60;
           timerTimeLeft.value = 25 * 60;
           timerTotalDuration.value = 25 * 60;
+          
+          notificationToggle.value = false;
+          newTodoPriority.value = 'normal';
+          newTodoRecurrence.value = 'none';
           if (isTimerRunning.value) {
             isTimerRunning.value = false;
             if (timerInterval) {
@@ -1528,14 +1548,32 @@ const app = createApp({
       }
 
       if (timerMode.value === 'focus') {
+        // Send Notification (Phase 4)
+        sendDesktopNotification(
+          lang.value === 'zh' ? '🎯 专注完成！' : '🎯 Focus Complete!',
+          lang.value === 'zh' ? '恭喜您完成了 1 个专注周期！快去短暂休息一下吧 ☕' : 'Congratulations on finishing 1 focus interval! Time for a short break ☕'
+        );
+
         timerMode.value = 'shortBreak';
         timerTotalDuration.value = shortBreakDuration.value;
         timerTimeLeft.value = shortBreakDuration.value;
       } else if (timerMode.value === 'shortBreak') {
+        // Send Notification (Phase 4)
+        sendDesktopNotification(
+          lang.value === 'zh' ? '☕ 休息结束！' : '☕ Break Ended!',
+          lang.value === 'zh' ? '系统休整完毕，快回来开启下一个高效专注期吧 ⚡' : 'Break ended. Time to start the next high-performance focus session ⚡'
+        );
+
         timerMode.value = 'focus';
         timerTotalDuration.value = focusDuration.value;
         timerTimeLeft.value = focusDuration.value;
       } else if (timerMode.value === 'longBreak') {
+        // Send Notification (Phase 4)
+        sendDesktopNotification(
+          lang.value === 'zh' ? '🌌 系统长休结束！' : '🌌 Long Break Ended!',
+          lang.value === 'zh' ? '系统已恢复满格能量，准备好开启全新的征程了吗？🎯' : 'Energy fully restored. Ready to start the next epic challenge? 🎯'
+        );
+
         timerMode.value = 'focus';
         timerTotalDuration.value = focusDuration.value;
         timerTimeLeft.value = focusDuration.value;
@@ -1683,6 +1721,129 @@ const app = createApp({
       }
     };
 
+    // ==========================================
+    // 🔔 WEB DESKTOP NOTIFICATIONS (Phase 4)
+    // ==========================================
+    const sendDesktopNotification = (title, body) => {
+      if (!notificationToggle.value || !('Notification' in window)) return;
+      if (Notification.permission === 'granted') {
+        new Notification(title, {
+          body: body,
+          icon: './favicon.ico'
+        });
+      }
+    };
+
+    const toggleNotification = () => {
+      SoundEffects.playClick();
+      if (notificationToggle.value) {
+        notificationToggle.value = false;
+      } else {
+        if (!('Notification' in window)) {
+          alert(lang.value === 'zh' ? '抱歉，您的浏览器不支持桌面推送消息通知。' : 'Sorry, your browser does not support desktop notifications.');
+          notificationToggle.value = false;
+          return;
+        }
+        
+        Notification.requestPermission().then(permission => {
+          if (permission === 'granted') {
+            notificationToggle.value = true;
+            new Notification(lang.value === 'zh' ? '🔔 桌面推送通知已成功开启！' : '🔔 Desktop notifications successfully enabled!');
+          } else {
+            alert(lang.value === 'zh' ? '未获桌面通知授权，请在浏览器地址栏左侧允许此页面的通知权限！' : 'Notification permission denied. Please allow notifications in your browser settings!');
+            notificationToggle.value = false;
+          }
+        });
+      }
+    };
+
+    // ==========================================
+    // 🔁 SMART OFFLINE TASK SCHEDULER (Phase 4)
+    // ==========================================
+    const runTaskScheduler = () => {
+      try {
+        const lastCheckStr = localStorage.getItem(STORAGE_KEYS.lastCheck);
+        const today = new Date();
+        const todayStr = today.toDateString(); // e.g. "Thu May 28 2026"
+        
+        if (!lastCheckStr) {
+          localStorage.setItem(STORAGE_KEYS.lastCheck, todayStr);
+          return;
+        }
+        
+        if (lastCheckStr === todayStr) {
+          return;
+        }
+        
+        let countResets = 0;
+        const lastCheckDate = new Date(lastCheckStr);
+        const isNewDay = true;
+        
+        const getMonday = (d) => {
+          const date = new Date(d);
+          const day = date.getDay();
+          const diff = date.getDate() - day + (day === 0 ? -6 : 1);
+          return new Date(date.setDate(diff)).toDateString();
+        };
+        const isNewWeek = getMonday(lastCheckDate) !== getMonday(today);
+        const isNewMonth = lastCheckDate.getMonth() !== today.getMonth() || lastCheckDate.getFullYear() !== today.getFullYear();
+        
+        todos.value.forEach(todo => {
+          if (todo.recurrence && todo.recurrence !== 'none') {
+            let shouldReset = false;
+            
+            if (todo.recurrence === 'daily' && isNewDay) {
+              shouldReset = true;
+            } else if (todo.recurrence === 'weekly' && isNewWeek) {
+              shouldReset = true;
+            } else if (todo.recurrence === 'monthly' && isNewMonth) {
+              shouldReset = true;
+            }
+            
+            if (shouldReset && todo.completed) {
+              todo.completed = false;
+              if (todo.subtasks && todo.subtasks.length > 0) {
+                todo.subtasks.forEach(s => s.completed = false);
+              }
+              countResets++;
+            }
+          }
+        });
+        
+        if (countResets > 0) {
+          console.log(`Scheduler: Reset ${countResets} recurring tasks.`);
+          saveTodos();
+          
+          setTimeout(() => {
+            sendDesktopNotification(
+              lang.value === 'zh' ? '🔄 周期任务重置提醒' : '🔄 Recurring Tasks Reset',
+              lang.value === 'zh' ? `新的一天开启，系统已为您自动唤醒并重置了 ${countResets} 个周期任务！` : `A new cycle has started. ${countResets} recurring tasks have been reset for you!`
+            );
+          }, 3000);
+        }
+        
+        localStorage.setItem(STORAGE_KEYS.lastCheck, todayStr);
+      } catch (err) {
+        console.error('Scheduler failure:', err);
+      }
+    };
+
+    // ==========================================
+    // 🎯 PRIORITY CYCLING (Phase 4)
+    // ==========================================
+    const cycleTodoPriority = (todo) => {
+      SoundEffects.playClick();
+      const current = todo.priority || 'normal';
+      if (current === 'low') {
+        todo.priority = 'normal';
+      } else if (current === 'normal') {
+        todo.priority = 'high';
+      } else {
+        todo.priority = 'low';
+      }
+      saveTodos();
+    };
+
     // Lifecycle mount initialization
     onMounted(() => {
       fetchStorage();
@@ -1692,6 +1853,9 @@ const app = createApp({
       // Apply style preference on boot
       applyRadiusStyle();
       applyAccentColor();
+
+      // Trigger smart recurring scheduler (Phase 4)
+      runTaskScheduler();
     });
 
     return {
@@ -1754,6 +1918,13 @@ const app = createApp({
       resetTimer,
       ambientMode,
       toggleAmbient,
+      
+      // 🔔 Phase 4 States & Methods
+      notificationToggle,
+      newTodoPriority,
+      newTodoRecurrence,
+      toggleNotification,
+      cycleTodoPriority,
 
       // Durations & Setting Methods
       focusDuration,
