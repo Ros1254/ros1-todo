@@ -39,7 +39,7 @@
     <!-- Vue Root App Wrapper -->
     <div id="todo-app" v-cloak>
         <!-- Main Container -->
-        <div class="todo-wrapper">
+        <div class="todo-wrapper" :class="{ 'kanban-mode': appMode === 'advanced' && currentView === 'kanban' }">
             <div class="todo-app">
             
             <!-- 1. HEADER SECTION -->
