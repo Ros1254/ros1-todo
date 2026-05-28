@@ -651,12 +651,10 @@ const app = createApp({
 
     // 🌅 Tomorrow Plan Computed Filters
     const todayTodos = computed(() => {
-      if (appMode.value !== 'advanced') return filteredTodos.value;
       return filteredTodos.value.filter(t => !t.isTomorrow);
     });
 
     const tomorrowTodos = computed(() => {
-      if (appMode.value !== 'advanced') return [];
       return filteredTodos.value.filter(t => t.isTomorrow);
     });
 
@@ -678,10 +676,7 @@ const app = createApp({
     });
 
     const showEmptyTips = computed(() => {
-      if (appMode.value === 'advanced') {
-        return todayTodos.value.length === 0 && tomorrowTodos.value.length === 0;
-      }
-      return filteredTodos.value.length === 0;
+      return todayTodos.value.length === 0 && tomorrowTodos.value.length === 0;
     });
 
 
@@ -1040,7 +1035,7 @@ const app = createApp({
         subtasks: [],
         priority: newTodoPriority.value, // 'low', 'normal', 'high'
         recurrence: newTodoRecurrence.value, // 'none', 'daily', 'weekly', 'monthly'
-        isTomorrow: appMode.value === 'advanced' ? newTodoIsTomorrow.value : false
+        isTomorrow: newTodoIsTomorrow.value
       });
 
       // Clear input fields
