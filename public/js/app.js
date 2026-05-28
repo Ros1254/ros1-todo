@@ -425,7 +425,10 @@ const STORAGE_KEYS = {
   lang: 'ros1-todo-lang',
   radiusStyle: 'ros1-todo-radius-style',
   accentColor: 'ros1-todo-accent-color',
-  appMode: 'ros1-todo-app-mode'
+  appMode: 'ros1-todo-app-mode',
+  focusDuration: 'ros1-todo-focus-dur',
+  shortBreakDuration: 'ros1-todo-sbreak-dur',
+  longBreakDuration: 'ros1-todo-lbreak-dur'
 };
 
 // HELPER UTILITY FOR Multimodal Audio base64 conversions
@@ -491,6 +494,10 @@ const app = createApp({
 
     // 🧭 Flow Pomodoro & Ambient Sound States
     const focusedTodoId = ref(null);
+    const focusDuration = ref(25 * 60);
+    const shortBreakDuration = ref(5 * 60);
+    const longBreakDuration = ref(15 * 60);
+
     const timerTimeLeft = ref(25 * 60);
     const timerTotalDuration = ref(25 * 60);
     const isTimerRunning = ref(false);
@@ -514,6 +521,13 @@ const app = createApp({
         radiusStyle.value = localStorage.getItem(STORAGE_KEYS.radiusStyle) || 'rounded';
         accentColor.value = localStorage.getItem(STORAGE_KEYS.accentColor) || 'default';
         appMode.value = localStorage.getItem(STORAGE_KEYS.appMode) || 'normal';
+
+        focusDuration.value = Number(localStorage.getItem(STORAGE_KEYS.focusDuration)) || 25 * 60;
+        shortBreakDuration.value = Number(localStorage.getItem(STORAGE_KEYS.shortBreakDuration)) || 5 * 60;
+        longBreakDuration.value = Number(localStorage.getItem(STORAGE_KEYS.longBreakDuration)) || 15 * 60;
+
+        timerTotalDuration.value = focusDuration.value;
+        timerTimeLeft.value = focusDuration.value;
 
         // Sync HTML data attribute with theme
         document.documentElement.setAttribute('data-theme', theme.value);
@@ -547,6 +561,9 @@ const app = createApp({
     const saveRadiusStyle = () => localStorage.setItem(STORAGE_KEYS.radiusStyle, radiusStyle.value);
     const saveAccentColor = () => localStorage.setItem(STORAGE_KEYS.accentColor, accentColor.value);
     const saveAppMode = () => localStorage.setItem(STORAGE_KEYS.appMode, appMode.value);
+    const saveFocusDuration = () => localStorage.setItem(STORAGE_KEYS.focusDuration, focusDuration.value.toString());
+    const saveShortBreakDuration = () => localStorage.setItem(STORAGE_KEYS.shortBreakDuration, shortBreakDuration.value.toString());
+    const saveLongBreakDuration = () => localStorage.setItem(STORAGE_KEYS.longBreakDuration, longBreakDuration.value.toString());
 
     // Watchers for continuous storage synchronization
     watch(todos, saveTodos, { deep: true });
@@ -567,6 +584,9 @@ const app = createApp({
       saveAccentColor();
       applyAccentColor();
     });
+    watch(focusDuration, saveFocusDuration);
+    watch(shortBreakDuration, saveShortBreakDuration);
+    watch(longBreakDuration, saveLongBreakDuration);
     watch(appMode, (newMode) => {
       saveAppMode();
       if (newMode === 'normal') {
@@ -1428,6 +1448,9 @@ const app = createApp({
           accentColor.value = 'default';
           
           focusedTodoId.value = null;
+          focusDuration.value = 25 * 60;
+          shortBreakDuration.value = 5 * 60;
+          longBreakDuration.value = 15 * 60;
           timerTimeLeft.value = 25 * 60;
           timerTotalDuration.value = 25 * 60;
           if (isTimerRunning.value) {
@@ -1506,16 +1529,16 @@ const app = createApp({
 
       if (timerMode.value === 'focus') {
         timerMode.value = 'shortBreak';
-        timerTotalDuration.value = 5 * 60;
-        timerTimeLeft.value = 5 * 60;
+        timerTotalDuration.value = shortBreakDuration.value;
+        timerTimeLeft.value = shortBreakDuration.value;
       } else if (timerMode.value === 'shortBreak') {
         timerMode.value = 'focus';
-        timerTotalDuration.value = 25 * 60;
-        timerTimeLeft.value = 25 * 60;
+        timerTotalDuration.value = focusDuration.value;
+        timerTimeLeft.value = focusDuration.value;
       } else if (timerMode.value === 'longBreak') {
         timerMode.value = 'focus';
-        timerTotalDuration.value = 25 * 60;
-        timerTimeLeft.value = 25 * 60;
+        timerTotalDuration.value = focusDuration.value;
+        timerTimeLeft.value = focusDuration.value;
       }
     };
 
@@ -1556,14 +1579,90 @@ const app = createApp({
       }
       
       if (timerMode.value === 'focus') {
-        timerTotalDuration.value = 25 * 60;
-        timerTimeLeft.value = 25 * 60;
+        timerTotalDuration.value = focusDuration.value;
+        timerTimeLeft.value = focusDuration.value;
       } else if (timerMode.value === 'shortBreak') {
-        timerTotalDuration.value = 5 * 60;
-        timerTimeLeft.value = 5 * 60;
+        timerTotalDuration.value = shortBreakDuration.value;
+        timerTimeLeft.value = shortBreakDuration.value;
       } else if (timerMode.value === 'longBreak') {
-        timerTotalDuration.value = 15 * 60;
-        timerTimeLeft.value = 15 * 60;
+        timerTotalDuration.value = longBreakDuration.value;
+        timerTimeLeft.value = longBreakDuration.value;
+      }
+    };
+
+    // Computed wrappers for settings inputs (with auto-sync on change)
+    const focusDurationMin = computed({
+      get: () => Math.round(focusDuration.value / 60),
+      set: (val) => {
+        const minutes = Number(val);
+        if (isNaN(minutes) || minutes < 1) return;
+        focusDuration.value = minutes * 60;
+        if (!isTimerRunning.value && timerMode.value === 'focus') {
+          timerTimeLeft.value = focusDuration.value;
+          timerTotalDuration.value = focusDuration.value;
+        }
+      }
+    });
+
+    const shortBreakDurationMin = computed({
+      get: () => Math.round(shortBreakDuration.value / 60),
+      set: (val) => {
+        const minutes = Number(val);
+        if (isNaN(minutes) || minutes < 1) return;
+        shortBreakDuration.value = minutes * 60;
+        if (!isTimerRunning.value && timerMode.value === 'shortBreak') {
+          timerTimeLeft.value = shortBreakDuration.value;
+          timerTotalDuration.value = shortBreakDuration.value;
+        }
+      }
+    });
+
+    const longBreakDurationMin = computed({
+      get: () => Math.round(longBreakDuration.value / 60),
+      set: (val) => {
+        const minutes = Number(val);
+        if (isNaN(minutes) || minutes < 1) return;
+        longBreakDuration.value = minutes * 60;
+        if (!isTimerRunning.value && timerMode.value === 'longBreak') {
+          timerTimeLeft.value = longBreakDuration.value;
+          timerTotalDuration.value = longBreakDuration.value;
+        }
+      }
+    });
+
+    // Quick presets adjustment
+    const adjustTime = (seconds) => {
+      SoundEffects.playClick();
+      let newTime = timerTimeLeft.value + seconds;
+      if (newTime < 60) newTime = 60; // minimum 1 min
+      if (newTime > 180 * 60) newTime = 180 * 60; // max 180 min
+      
+      timerTimeLeft.value = newTime;
+      timerTotalDuration.value = newTime;
+    };
+
+    // Manual mode switching
+    const switchTimerMode = (mode) => {
+      SoundEffects.playClick();
+      if (isTimerRunning.value) {
+        isTimerRunning.value = false;
+        if (timerInterval) {
+          clearInterval(timerInterval);
+          timerInterval = null;
+        }
+      }
+      
+      timerMode.value = mode;
+      
+      if (mode === 'focus') {
+        timerTotalDuration.value = focusDuration.value;
+        timerTimeLeft.value = focusDuration.value;
+      } else if (mode === 'shortBreak') {
+        timerTotalDuration.value = shortBreakDuration.value;
+        timerTimeLeft.value = shortBreakDuration.value;
+      } else if (mode === 'longBreak') {
+        timerTotalDuration.value = longBreakDuration.value;
+        timerTimeLeft.value = longBreakDuration.value;
       }
     };
 
@@ -1655,6 +1754,16 @@ const app = createApp({
       resetTimer,
       ambientMode,
       toggleAmbient,
+
+      // Durations & Setting Methods
+      focusDuration,
+      shortBreakDuration,
+      longBreakDuration,
+      focusDurationMin,
+      shortBreakDurationMin,
+      longBreakDurationMin,
+      adjustTime,
+      switchTimerMode,
       
       // Methods
       startEditSlogan,

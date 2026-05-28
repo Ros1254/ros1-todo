@@ -466,6 +466,37 @@
                     <div class="sidebar-widget pomodoro-widget" v-if="appMode === 'advanced'">
                         <div class="widget-title">{{ t('pomodoroTitle') }}</div>
                         
+                        <!-- 🎛️ Mode Switcher Tabs -->
+                        <div class="timer-mode-tabs" style="display: flex; gap: 4px; background: rgba(var(--accent-rgb), 0.03); padding: 3px; border-radius: var(--radius-sm); margin-bottom: 12px;">
+                            <button 
+                                class="mode-tab-btn" 
+                                :class="{ active: timerMode === 'focus' }" 
+                                @click="switchTimerMode('focus')"
+                                style="flex: 1; border: none; padding: 6px; font-size: 11px; font-weight: 700; border-radius: var(--radius-sm); cursor: pointer; transition: all 0.2s;"
+                                :style="timerMode === 'focus' ? 'background: var(--accent); color: var(--bg-secondary); box-shadow: 0 2px 8px var(--glow-color);' : 'background: transparent; color: var(--text-secondary);'"
+                            >
+                                {{ lang === 'zh' ? '专注' : 'Focus' }}
+                            </button>
+                            <button 
+                                class="mode-tab-btn" 
+                                :class="{ active: timerMode === 'shortBreak' }" 
+                                @click="switchTimerMode('shortBreak')"
+                                style="flex: 1; border: none; padding: 6px; font-size: 11px; font-weight: 700; border-radius: var(--radius-sm); cursor: pointer; transition: all 0.2s;"
+                                :style="timerMode === 'shortBreak' ? 'background: var(--accent); color: var(--bg-secondary); box-shadow: 0 2px 8px var(--glow-color);' : 'background: transparent; color: var(--text-secondary);'"
+                            >
+                                {{ lang === 'zh' ? '短休' : 'Break' }}
+                            </button>
+                            <button 
+                                class="mode-tab-btn" 
+                                :class="{ active: timerMode === 'longBreak' }" 
+                                @click="switchTimerMode('longBreak')"
+                                style="flex: 1; border: none; padding: 6px; font-size: 11px; font-weight: 700; border-radius: var(--radius-sm); cursor: pointer; transition: all 0.2s;"
+                                :style="timerMode === 'longBreak' ? 'background: var(--accent); color: var(--bg-secondary); box-shadow: 0 2px 8px var(--glow-color);' : 'background: transparent; color: var(--text-secondary);'"
+                            >
+                                {{ lang === 'zh' ? '休整' : 'Long' }}
+                            </button>
+                        </div>
+
                         <!-- 🎯 Circular Progress Ring & Timer -->
                         <div class="pomodoro-timer-display">
                             <svg class="progress-ring" viewBox="0 0 100 100">
@@ -476,6 +507,14 @@
                                 <div class="timer-mode-badge" :class="timerModeClass">{{ timerModeText }}</div>
                                 <div class="timer-time">{{ formattedTime }}</div>
                             </div>
+                        </div>
+
+                        <!-- ➕➖ Timer Presets (Only visible when paused) -->
+                        <div class="timer-presets" v-if="!isTimerRunning" style="display: flex; gap: 6px; justify-content: center; margin-top: 10px; margin-bottom: 6px;">
+                            <button class="preset-btn" @click="adjustTime(-300)" style="background: rgba(var(--accent-rgb), 0.03); border: 1px solid var(--border-color); color: var(--text-secondary); padding: 4px 8px; font-size: 11px; font-weight: 700; border-radius: var(--radius-sm); cursor: pointer; transition: all 0.2s;">-5m</button>
+                            <button class="preset-btn" @click="adjustTime(-60)" style="background: rgba(var(--accent-rgb), 0.03); border: 1px solid var(--border-color); color: var(--text-secondary); padding: 4px 8px; font-size: 11px; font-weight: 700; border-radius: var(--radius-sm); cursor: pointer; transition: all 0.2s;">-1m</button>
+                            <button class="preset-btn" @click="adjustTime(60)" style="background: rgba(var(--accent-rgb), 0.03); border: 1px solid var(--border-color); color: var(--text-secondary); padding: 4px 8px; font-size: 11px; font-weight: 700; border-radius: var(--radius-sm); cursor: pointer; transition: all 0.2s;">+1m</button>
+                            <button class="preset-btn" @click="adjustTime(300)" style="background: rgba(var(--accent-rgb), 0.03); border: 1px solid var(--border-color); color: var(--text-secondary); padding: 4px 8px; font-size: 11px; font-weight: 700; border-radius: var(--radius-sm); cursor: pointer; transition: all 0.2s;">+5m</button>
                         </div>
 
                         <!-- 🎛️ Control Buttons -->
@@ -643,6 +682,31 @@
                                 <option value="sharp">{{ t('radiusSharp') }}</option>
                                 <option value="classic">{{ t('radiusClassic') }}</option>
                             </select>
+                        </div>
+
+                        <!-- 🧭 Pomodoro Custom Durations Settings (Visible only when appMode is advanced) -->
+                        <div v-if="appMode === 'advanced'" style="margin-top: 15px; padding-top: 15px; border-top: 1.5px dashed var(--border-color);">
+                            <div class="settings-input-label" style="font-weight: 800; font-size: 13px; color: var(--text-primary); margin-bottom: 10px; display: flex; align-items: center; gap: 4px;">
+                                <span>🧭</span> <span>{{ lang === 'zh' ? '番茄专注时长设置' : 'Pomodoro Durations' }}</span>
+                            </div>
+                            
+                            <!-- Focus Duration -->
+                            <div class="settings-input-group">
+                                <label class="settings-input-label">{{ lang === 'zh' ? '专注时间 (分钟)' : 'Focus (min)' }}</label>
+                                <input type="number" class="settings-input-control" v-model.number="focusDurationMin" min="1" max="180" @change="SoundEffects.playClick()" />
+                            </div>
+
+                            <!-- Short Break Duration -->
+                            <div class="settings-input-group" style="margin-top: 8px;">
+                                <label class="settings-input-label">{{ lang === 'zh' ? '短暂休息 (分钟)' : 'Short Break (min)' }}</label>
+                                <input type="number" class="settings-input-control" v-model.number="shortBreakDurationMin" min="1" max="60" @change="SoundEffects.playClick()" />
+                            </div>
+
+                            <!-- Long Break Duration -->
+                            <div class="settings-input-group" style="margin-top: 8px;">
+                                <label class="settings-input-label">{{ lang === 'zh' ? '系统休整 (分钟)' : 'Long Break (min)' }}</label>
+                                <input type="number" class="settings-input-control" v-model.number="longBreakDurationMin" min="1" max="120" @change="SoundEffects.playClick()" />
+                            </div>
                         </div>
                     </div>
 
