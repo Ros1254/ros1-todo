@@ -367,7 +367,7 @@
                     <!-- List View Wrapper (Normal Mode or currentView === 'list') -->
                     <template v-if="appMode !== 'advanced' || currentView === 'list'">
                         <!-- List of Tasks -->
-                        <ul class="todo-list" v-if="filteredTodos.length > 0">
+                        <ul class="todo-list" :class="{ 'compact-mode': filteredTodos.length > 6 }" v-if="filteredTodos.length > 0">
                             <li 
                                 v-for="(todo, index) in filteredTodos" 
                                 :key="todo.id" 
@@ -604,7 +604,7 @@
                                 <span class="kanban-column-title">📥 {{ lang === 'zh' ? '待处理' : 'To Do' }}</span>
                                 <span class="kanban-column-count">{{ kanbanTodoTasks.length }}</span>
                             </div>
-                            <div class="kanban-column-content" data-status="todo">
+                            <div class="kanban-column-content" :class="{ 'compact-mode': kanbanTodoTasks.length > 6 }" data-status="todo">
                                 <div 
                                     v-for="(todo, index) in kanbanTodoTasks" 
                                     :key="todo.id" 
@@ -774,7 +774,7 @@
                                 <span class="kanban-column-title">⚡ {{ lang === 'zh' ? '进行中' : 'In Progress' }}</span>
                                 <span class="kanban-column-count">{{ kanbanProgressTasks.length }}</span>
                             </div>
-                            <div class="kanban-column-content" data-status="progress">
+                            <div class="kanban-column-content" :class="{ 'compact-mode': kanbanProgressTasks.length > 6 }" data-status="progress">
                                 <div 
                                     v-for="(todo, index) in kanbanProgressTasks" 
                                     :key="todo.id" 
@@ -944,7 +944,7 @@
                                 <span class="kanban-column-title">✅ {{ lang === 'zh' ? '已完成' : 'Done' }}</span>
                                 <span class="kanban-column-count">{{ kanbanDoneTasks.length }}</span>
                             </div>
-                            <div class="kanban-column-content" data-status="done">
+                            <div class="kanban-column-content" :class="{ 'compact-mode': kanbanDoneTasks.length > 6 }" data-status="done">
                                 <div 
                                     v-for="(todo, index) in kanbanDoneTasks" 
                                     :key="todo.id" 
