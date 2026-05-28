@@ -494,7 +494,8 @@ const STORAGE_KEYS = {
   focusStreak: 'ros1-todo-focus-streak',
   totalFocusedMinutes: 'ros1-todo-total-focused-minutes',
   completedHistory: 'ros1-todo-completed-history',
-  unlockedAchievements: 'ros1-todo-unlocked-achievements'
+  unlockedAchievements: 'ros1-todo-unlocked-achievements',
+  tags: 'ros1-todo-tags'
 };
 
 const PRESET_ACHIEVEMENTS = [
@@ -573,6 +574,9 @@ const app = createApp({
     const newTodoTitle = ref('');
     const newTodoTags = ref([]); // tags selected for a new task
     const availableTags = ref(['工作', '生活', '学习', '紧急', '会议']);
+    const isAddingCustomTag = ref(false);
+    const customTagInput = ref('');
+    const customTagInputRef = ref(null);
     
     const selectedTagsFilter = ref([]); // Active filters by tag
     const intention = ref('all'); // all, ongoing, completed, removed
@@ -689,6 +693,15 @@ const app = createApp({
         
         hydrateCompletedHistoryPlaceholders();
 
+        try {
+          const storedTags = localStorage.getItem(STORAGE_KEYS.tags);
+          if (storedTags) {
+            availableTags.value = JSON.parse(storedTags);
+          }
+        } catch (e) {
+          console.error('Failed to load custom tags:', e);
+        }
+
         // Sync HTML data attribute with theme
         document.documentElement.setAttribute('data-theme', theme.value);
         
@@ -750,6 +763,9 @@ const app = createApp({
     watch(longBreakDuration, saveLongBreakDuration);
     watch(notificationToggle, saveNotificationToggle);
     watch(currentView, (newVal) => localStorage.setItem(STORAGE_KEYS.currentView, newVal));
+    watch(availableTags, () => {
+      localStorage.setItem(STORAGE_KEYS.tags, JSON.stringify(availableTags.value));
+    }, { deep: true });
     watch(appMode, (newMode) => {
       saveAppMode();
       if (newMode === 'normal') {
@@ -1202,6 +1218,30 @@ const app = createApp({
       } else {
         newTodoTags.value.push(tag);
       }
+    };
+
+    const startAddingCustomTag = () => {
+      isAddingCustomTag.value = true;
+      nextTick(() => {
+        if (customTagInputRef.value) {
+          customTagInputRef.value.focus();
+        }
+      });
+    };
+
+    const submitCustomTag = () => {
+      const val = customTagInput.value.trim();
+      if (val) {
+        if (!availableTags.value.includes(val)) {
+          availableTags.value.push(val);
+          SoundEffects.playClick();
+        }
+        if (!newTodoTags.value.includes(val)) {
+          newTodoTags.value.push(val);
+        }
+      }
+      customTagInput.value = '';
+      isAddingCustomTag.value = false;
     };
 
     // Filtering by tag click
@@ -2602,6 +2642,11 @@ const app = createApp({
       cancelEditSlogan,
       addTodo,
       toggleAddTag,
+      isAddingCustomTag,
+      customTagInput,
+      customTagInputRef,
+      startAddingCustomTag,
+      submitCustomTag,
       toggleFilterTag,
       toggleTodoComplete,
       startEditTodo,
