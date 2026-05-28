@@ -609,6 +609,7 @@ const app = createApp({
     const radiusStyle = ref('rounded'); // 'rounded', 'sharp', 'classic'
     const accentColor = ref('default'); // 'default', 'cyan', 'green', 'pink', 'purple', 'orange'
     const appMode = ref('normal'); // 'normal' or 'advanced'
+    const isPomodoroVisible = ref(true);
 
     // 🧭 Flow Pomodoro & Ambient Sound States
     const focusedTodoId = ref(null);
@@ -658,6 +659,7 @@ const app = createApp({
         radiusStyle.value = localStorage.getItem(STORAGE_KEYS.radiusStyle) || 'rounded';
         accentColor.value = localStorage.getItem(STORAGE_KEYS.accentColor) || 'default';
         appMode.value = localStorage.getItem(STORAGE_KEYS.appMode) || 'normal';
+        isPomodoroVisible.value = localStorage.getItem('ros1-todo-pomodoro-visible') !== 'false';
 
         focusDuration.value = Number(localStorage.getItem(STORAGE_KEYS.focusDuration)) || 25 * 60;
         shortBreakDuration.value = Number(localStorage.getItem(STORAGE_KEYS.shortBreakDuration)) || 5 * 60;
@@ -763,6 +765,9 @@ const app = createApp({
     watch(longBreakDuration, saveLongBreakDuration);
     watch(notificationToggle, saveNotificationToggle);
     watch(currentView, (newVal) => localStorage.setItem(STORAGE_KEYS.currentView, newVal));
+    watch(isPomodoroVisible, (newVal) => {
+      localStorage.setItem('ros1-todo-pomodoro-visible', newVal.toString());
+    });
     watch(availableTags, () => {
       localStorage.setItem(STORAGE_KEYS.tags, JSON.stringify(availableTags.value));
     }, { deep: true });
@@ -2645,6 +2650,7 @@ const app = createApp({
       isAddingCustomTag,
       customTagInput,
       customTagInputRef,
+      isPomodoroVisible,
       startAddingCustomTag,
       submitCustomTag,
       toggleFilterTag,

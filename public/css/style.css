@@ -2345,5 +2345,25 @@ body {
 }
 
 
+/* ==========================================================================
+   🧭 POMODORO COLLAPSIBLE TRANSITIONS & ANIMATIONS
+   ========================================================================== */
+
+.widget-collapse-enter-active,
+.widget-collapse-leave-active {
+  transition: all 0.35s cubic-bezier(0.25, 1, 0.5, 1);
+  max-height: 480px;
+  opacity: 1;
+  overflow: hidden;
+}
+
+.widget-collapse-enter-from,
+.widget-collapse-leave-to {
+  max-height: 0;
+  opacity: 0;
+  overflow: hidden;
+}
+
+
 
 

@@ -1242,8 +1242,15 @@
                     </div>
 
                     <!-- 🧭 Flow Pomodoro & Ambient Widget (Advanced Mode Only) -->
-                    <div class="sidebar-widget pomodoro-widget" v-if="appMode === 'advanced'">
-                        <div class="widget-title">{{ t('pomodoroTitle') }}</div>
+                    <div class="sidebar-widget pomodoro-widget" v-if="appMode === 'advanced'" style="transition: all 0.3s cubic-bezier(0.25, 1, 0.5, 1);">
+                        <div class="widget-title" @click="isPomodoroVisible = !isPomodoroVisible; SoundEffects.playClick();" style="cursor: pointer; display: flex; justify-content: space-between; align-items: center; user-select: none; margin-bottom: 0;">
+                            <span>{{ t('pomodoroTitle') }}</span>
+                            <span :style="{ transform: isPomodoroVisible ? 'rotate(0deg)' : 'rotate(-90deg)', transition: 'transform 0.3s cubic-bezier(0.25, 1, 0.5, 1)' }" style="font-size: 10px; color: var(--accent); font-weight: 800; display: inline-block;">🔽</span>
+                        </div>
+                        
+                        <!-- Collapsible Body -->
+                        <transition name="widget-collapse">
+                            <div v-show="isPomodoroVisible" class="pomodoro-widget-body" style="margin-top: 12px;">
                         
                         <!-- 🎛️ Mode Switcher Tabs -->
                         <div class="timer-mode-tabs" style="display: flex; gap: 4px; background: rgba(var(--accent-rgb), 0.03); padding: 3px; border-radius: var(--radius-sm); margin-bottom: 12px;">
@@ -1343,7 +1350,9 @@
                                 </button>
                             </div>
                         </div>
-                    </div>
+                        </div> <!-- Close .pomodoro-widget-body -->
+                    </transition>
+                </div>
                 </aside>
             </div>
 
